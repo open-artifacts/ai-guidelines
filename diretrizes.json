@@ -1,0 +1,225 @@
+{
+  "diretrizes": [
+    {
+      "id": 1,
+      "pt": {
+        "titulo": "Diretriz A.1: Promoção do Letramento em IA",
+        "principio": "Antes de qualquer codificação começar, os educadores devem dedicar tempo formal de aula para explicar como os LLMs operam. Os estudantes devem entender que essas ferramentas são estocásticas, prevendo o próximo token provável com base em probabilidades estatísticas, e não possuem raciocínio lógico real ou senciência.",
+        "aplicacao": "Demonstre ao vivo como a IA pode gerar um loop sintaticamente correto, mas logicamente falho. Desconstrua o mito da 'caixa-preta' para que os estudantes vejam a ferramenta como um assistente probabilístico, e não como um oráculo infalível."
+      },
+      "en": {
+        "title": "Guideline A.1: Promotion of AI Literacy",
+        "principle": "Before any coding begins, educators must dedicate formal class time to explain how LLMs operate. Students must understand that these tools are stochastic, predicting the next likely token based on statistical probabilities, and do not possess actual logical reasoning or sentience.",
+        "application": "Demonstrate live how AI can generate a syntactically correct but logically flawed loop. Deconstruct the \"black box\" myth so students view the tool as a probabilistic assistant rather than an infallible oracle."
+      }
+    },
+    {
+      "id": 2,
+      "pt": {
+        "titulo": "Diretriz A.2: Avaliação Focada no Processo em vez de Avaliação Focada no Produto",
+        "principio": "Desloque o peso da avaliação do produto final para o processo de resolução de problemas, priorizando a internalização do conhecimento.",
+        "aplicacao": "Exija que os alunos submetam seu histórico de commits do Git, rascunhem pseudocódigo manualmente antes de usar IA, ou gravem um vídeo curto defendendo e explicando a lógica por trás do código que entregam."
+      },
+      "en": {
+        "title": "Guideline A.2: Process-Focused Assessment over Product-Focused Assessment",
+        "principle": "Shift the evaluative weight away from the final product to the problem-solving process, prioritizing the internalization of knowledge.",
+        "application": "Require students to submit their Git commit history, draft pseudocode manually before using AI, or record a short video defending and explaining the logic behind the code they submit."
+      }
+    },
+    {
+      "id": 3,
+      "pt": {
+        "titulo": "Diretriz A.3: Diretrizes Claras de Transparência e Declaração",
+        "principio": "Estabeleça regras rigorosas que exijam que os alunos declarem explicitamente quando, como e por que a IA Generativa foi usada em suas tarefas, para manter a integridade acadêmica.",
+        "aplicacao": "Exija um bloco de comentário 'Declaração de Uso de IA' no topo de cada arquivo de código-fonte submetido. Solicite que os alunos incluam os prompts exatos utilizados e a justificativa para aceitar a saída da IA."
+      },
+      "en": {
+        "title": "Guideline A.3: Clear Transparency and Declaration Guidelines",
+        "principle": "Establish uncompromising rules requiring students to explicitly declare when, how, and why GenAI was used in their assignments to maintain academic integrity.",
+        "application": "Mandate an \"AI Usage Declaration\" comment block at the top of every submitted source code file. Require students to include the exact prompts used and the rationale for accepting the AI's output."
+      }
+    },
+    {
+      "id": 4,
+      "pt": {
+        "titulo": "Diretriz A.4: Proteção de Dados, Privacidade e Conformidade com a LGPD",
+        "principio": "Proteja contra vazamento de dados e 'colonialismo de dados'. Instrua os alunos a nunca submeterem código proprietário, dados de projetos reais ou informações pessoais de usuários a plataformas de IA Generativa abertas.",
+        "aplicacao": "Forneça conjuntos de dados estritamente anonimizados e fictícios para todas as tarefas de banco de dados ou processamento de dados. Ensine explicitamente aos alunos como desativar opções de compartilhamento de dados/treinamento em ferramentas como o ChatGPT."
+      },
+      "en": {
+        "title": "Guideline A.4: Data Protection, Privacy, and LGPD Compliance",
+        "principle": "Safeguard against data leakage and \"data colonialism.\" Instruct students never to submit proprietary code, real-world project data, or personal user information to open GenAI platforms.",
+        "application": "Provide strictly anonymized, fictional datasets for all database or data-processing assignments. Explicitly teach students how to disable data-sharing/training options in tools like ChatGPT."
+      }
+    },
+    {
+      "id": 5,
+      "pt": {
+        "titulo": "Diretriz A.5: Ensino de Validação Crítica e Depuração Sistêmica",
+        "principio": "Em vez de focar exclusivamente na 'depuração da IA', o esforço cognitivo deve mudar para o desenvolvimento da validação sistêmica. Os alunos devem ser capazes de avaliar arquiteturas geradas por IA com o mesmo rigor aplicado ao código de desenvolvedores seniores, entendendo que a inteligência artificial introduz padrões sutis de falhas estruturais.",
+        "aplicacao": "Incorpore projetos práticos onde os alunos recebem uma solução arquitetural completa gerada por IA e devem conduzir uma revisão de código rigorosa entre pares. Os alunos devem desenvolver testes unitários automatizados e documentar falhas lógicas ou vulnerabilidades de segurança, tratando a IA como um membro júnior da equipe cujo trabalho requer auditoria obrigatória."
+      },
+      "en": {
+        "title": "Guideline A.5: Teaching Critical Validation and Systemic Debugging)",
+        "principle": "Rather than focusing solely on \"debugging AI,\" the cognitive effort must shift toward developing systemic validation. Students must be capable of evaluating AI-generated architectures with the same rigor applied to senior developers' code, understanding that artificial intelligence introduces subtle structural failure patterns.",
+        "application": "Incorporate practical projects where students receive a complete AI-generated architectural solution and must conduct a rigorous peer code review. Students should develop automated unit tests and document logical flaws or security vulnerabilities, treating the AI as a junior team member whose work requires mandatory auditing."
+      }
+    },
+    {
+      "id": 6,
+      "pt": {
+        "titulo": "Diretriz A.6: Mitigação da Dívida Cognitiva em Fases Introdutórias",
+        "principio": "Projete fases fundamentais do curso onde o uso de IA Generativa é estritamente restrito para garantir que os alunos desenvolvam lógica algorítmica básica de forma independente, prevenindo a dependência prematura.",
+        "aplicacao": "Durante as primeiras semanas de disciplinas introdutórias de programação, exija o uso de compiladores padrão e off-line. Introduza a IA Generativa apenas mais tarde no semestre, ao abordar estruturas de dados mais complexas."
+      },
+      "en": {
+        "title": "Guideline A.6: Mitigating Cognitive Debt in Introductory Phases",
+        "principle": "Design foundational phases of the course where the use of GenAI is strictly restricted to ensure students develop basic algorithmic logic independently, preventing premature over-reliance.",
+        "application": "During the first weeks of CS1, mandate the use of standard, offline compilers. Introduce GenAI only later in the semester when tackling more complex data structures."
+      }
+    },
+    {
+      "id": 7,
+      "pt": {
+        "titulo": "Diretriz A.7: Estruturação Aplicada de Prompts e Análise de Saída",
+        "principio": "A formulação de prompts não deve substituir o ensino de lógica algorítmica; em vez disso, deve ser tratada como uma habilidade de comunicação técnica intrinsecamente ligada à análise crítica da saída. O foco pedagógico não deve estar em alcançar o 'prompt perfeito', mas na capacidade do aluno de julgar e refinar iterativamente as respostas da máquina.",
+        "aplicacao": "Ensine os alunos a atribuir personas e restrições (por exemplo, \"Aja como um professor rigoroso de Ciência da Computação...\")"
+      },
+      "en": {
+        "title": "Guideline A.7: Applied Prompt Structuring and Output Analysis",
+        "principle": "Prompt formulation should not replace the teaching of algorithmic logic; rather, it should be treated as a technical communication skill intrinsically linked to the critical analysis of the output. The pedagogical focus should not be on achieving the \"perfect prompt,\" but on the student's ability to judge and iteratively refine the machine's responses.",
+        "application": "Teach students to assign personas and constraints (e.g., \"Act as a strict CS professor...\")."
+      }
+    },
+    {
+      "id": 8,
+      "pt": {
+        "titulo": "Diretriz A.8: Abordando o Viés Algorítmico em Software",
+        "principio": "Discuta como a IA Generativa pode gerar códigos que refletem normas de desenvolvimento do Norte Global ou ignoram práticas locais de software, perpetuando vieses históricos.",
+        "aplicacao": "Demonstre como um LLM falha ao aplicar corretamente formatações localizadas brasileiras (por exemplo, validação de CPF ou moeda BRL) sem prompts altamente específicos e culturalmente conscientes."
+      },
+      "en": {
+        "title": "Guideline A.8: Addressing Algorithmic Bias in Software",
+        "principle": "Discuss how GenAI can generate codes that reflect Global North development norms or ignore local software practices, perpetuating historical biases.",
+        "application": "Demonstrate how an LLM fails to correctly apply Brazilian localized formatting (e.g., CPF validation or BRL currency) without highly specific, culturally aware prompts."
+      }
+    },
+    {
+      "id": 9,
+      "pt": {
+        "titulo": "Diretriz A.9: Preservando o Paradigma \"Humano-no-Comando\"",
+        "principio": "Reforce a filosofia de que a tecnologia atua exclusivamente como um assistente de apoio. O humano deve permanecer no controle absoluto das decisões arquiteturais, considerações éticas e fluxo lógico.",
+        "aplicacao": "Institua sessões de revisão por pares onde os alunos devem revisar manualmente o código assistido por IA uns dos outros, garantindo que um humano sempre valide as sugestões da máquina."
+      },
+      "en": {
+        "title": "Guideline A.9: Preserving the \"Human-in-the-Loop\" Paradigm",
+        "principle": "Reinforce the philosophy that technology acts solely as a supportive assistant. The human must remain in absolute control of architectural decisions, ethical considerations, and logical flow.",
+        "application": "Institute peer-review sessions where students must manually review each other's AI-assisted code, ensuring a human always validates the machine's suggestions."
+      }
+    },
+    {
+      "id": 10,
+      "pt": {
+        "titulo": "Diretriz A.10: Abordagem Ativa para Lidar com Alucinações",
+        "principio": "Alerte os alunos de que a IA Generativa opera com 'excesso de confiança' e inventará com confiança bibliotecas inexistentes, funções obsoletas ou sintaxe fabricada.",
+        "aplicacao": "Mostre um estudo de caso real onde um desenvolvedor integrou um pacote de software alucinado, criando uma vulnerabilidade."
+      },
+      "en": {
+        "title": "Guideline A.10: Active Approach to Handling Hallucinations",
+        "principle": "Warn students that GenAI operates with \"overconfidence\" and will confidently invent nonexistent libraries, deprecated functions, or fabricated syntax.",
+        "application": "Show a real-world case study where a developer integrated a hallucinated software package, creating a vulnerability."
+      }
+    },
+    {
+      "id": 11,
+      "pt": {
+        "titulo": "Diretriz A.11: Direitos Autorais, Propriedade Intelectual e Plágio Involuntário",
+        "principio": "Eduque os alunos de que as saídas da IA Generativa são geradas a partir de uma vasta raspagem da web, potencialmente espelhando repositórios protegidos textualmente, constituindo plágio e violação de licença.",
+        "aplicacao": "Exija o uso de verificadores tradicionais de plágio e de licenças de código aberto em trechos de código gerados por IA."
+      },
+      "en": {
+        "title": "Guideline A.11: Copyright, Intellectual Property, and Inadvertent Plagiarism",
+        "principle": "Educate students that GenAI outputs are generated from massive web scraping, potentially mirroring protected repositories verbatim, constituting plagiarism and license violations.",
+        "application": "Mandate the use of traditional plagiarism and open-source license checkers on AI-generated code snippets."
+      }
+    },
+    {
+      "id": 12,
+      "pt": {
+        "titulo": "Diretriz A.12: Incentivo ao Uso Contextual de Modelos Locais e Seguros",
+        "principio": "Sempre que a infraestrutura técnica da instituição permitir, recomenda-se a exploração de LLMs hospedados localmente para preservar a soberania tecnológica. Quando inviável devido a limitações de hardware, o foco pedagógico deve se deslocar estritamente para a proteção de dados institucionais e anonimização ao usar modelos proprietários baseados em nuvem.",
+        "aplicacao": "Em laboratórios bem equipados, forneça instâncias de modelos de pesos abertos (como Llama) para que os alunos comparem desempenho e privacidade em relação às alternativas em nuvem. Em cenários com recursos limitados, exija práticas de 'higienização' de dados: os alunos devem demonstrar a substituição de credenciais reais, esquemas de banco de dados e lógica de negócio proprietária por marcadores genéricos antes de interagir com APIs públicas de IA."
+      },
+      "en": {
+        "title": "Guideline A.12: Encouraging the Contextual Use of Safe, Local Models",
+        "principle": "Whenever the institution's technical infrastructure permits, the exploration of locally hosted LLMs (Large Language Models) is recommended to preserve technological sovereignty. When unfeasible due to hardware constraints, the pedagogical focus must shift strictly to institutional data protection and anonymization when using proprietary cloud-based models.",
+        "application": "In well-equipped laboratories, provide instances of open-weights models (such as Llama) for students to compare performance and privacy against cloud alternatives. In resource-constrained scenarios, mandate data \"sanitization\" practices: students must demonstrate the replacement of real credentials, database schemas, and proprietary business logic with generic placeholders before interacting with public AI APIs (Applications Programming Interfaces)."
+      }
+    },
+    {
+      "id": 13,
+      "pt": {
+        "titulo": "Diretriz A.13: Combate à Antropomorfização da IA ",
+        "principio": "Corrija os alunos quando eles tratarem a IA como um 'colega' senciente ou autoridade inquestionável. É uma ferramenta, e não deve substituir a colaboração humana entre pares ou a mentoria professor-aluno.",
+        "aplicacao": "Promova exercícios de programação em par onde a comunicação e o debate humanos são necessários, proibindo explicitamente o uso de IA para resolver disputas interpessoais de codificação."
+      },
+      "en": {
+        "title": "Guideline A.13: Combating the Anthropomorphization of AI",
+        "principle": "Correct students when they treat the AI as a sentient \"colleague\" or unquestionable authority. It is a tool, and should not replace human peer collaboration or professor-student mentorship.",
+        "application": "Foster pair-programming exercises where human communication and debate are required, explicitly forbidding the use of AI to resolve interpersonal coding disputes."
+      }
+    },
+    {
+      "id": 14,
+      "pt": {
+        "titulo": "Diretriz A.14: Facilitação Didática e Planejamento Criativo de Aulas",
+        "principio": "Educadores devem utilizar a IA Generativa para extrair ideias criativas, gerar exemplos variados e otimizar tarefas administrativas, sem delegar o núcleo do design pedagógico à máquina.",
+        "aplicacao": "Use o ChatGPT para gerar cinco variações temáticas distintas do mesmo problema de algoritmo de ordenação, a fim de atender a diversos interesses dos alunos."
+      },
+      "en": {
+        "title": "Guideline A.14: Didactic Facilitation and Creative Lesson Planning",
+        "principle": "Educators should utilize GenAI to extract creative ideas, generate varied examples, and streamline administrative tasks, without delegating the core pedagogical design to the machine.",
+        "application": "Use ChatGPT to generate five distinct thematic variations of the same sorting algorithm problem to cater to diverse student interests."
+      }
+    },
+    {
+      "id": 15,
+      "pt": {
+        "titulo": "Diretriz A.15: Adaptação Institucional Contínua",
+        "principio": "Estabeleça debates abertos e contínuos dentro do departamento para ajustar as políticas pedagógicas iterativamente à medida que as ferramentas evoluem, em vez de confiar em proibições draconianas ineficazes ou softwares não confiáveis de detecção de IA.",
+        "aplicacao": "Forme um comitê de estudantes e professores que se reúna semestralmente para revisar o estado das ferramentas de IA Generativa e atualizar as diretrizes do currículo de acordo."
+      },
+      "en": {
+        "title": "Guideline A.15: Continuous Institutional Adaptation",
+        "principle": "Establish continuous, open debates within the department to adjust pedagogical policies iteratively as tools evolve, rather than relying on ineffective, draconian bans or unreliable AI-detection software.",
+        "application": "Form a student-faculty committee that meets bi-annually to review the state of GenAI tools and update the syllabus guidelines accordingly."
+      }
+    },
+    {
+      "id": 16,
+      "pt": {
+        "titulo": "Diretriz A.16: Equidade Socioeconômica e Acesso à IA",
+        "principio": "As instituições educacionais devem mitigar ativamente a lacuna de desempenho entre estudantes que têm acesso a LLMs premium (pagos) e aqueles restritos a versões gratuitas. As metodologias de avaliação não devem recompensar ou exigir capacidades generativas exclusivas de ferramentas comerciais pagas.",
+        "aplicacao": "Projete avaliações práticas (como sessões síncronas de codificação em sala de aula) onde o uso de IA é uniformemente restrito ou onde a instituição fornece tokens de acesso padronizados para um modelo de IA específico para todos os alunos durante a prova. Isso garante que a nota reflita estritamente a competência intelectual do aluno, em vez de seu poder aquisitivo."
+      },
+      "en": {
+        "title": "Guideline A.16: Socioeconomic Equity and AI Access",
+        "principle": "Educational institutions must actively mitigate the performance gap between students who have access to premium (paid) LLMs and those restricted to free versions. Evaluation methodologies must not reward or require generative capabilities exclusive to paid commercial tools.",
+        "application": "Design practical assessments (such as synchronous in-class coding sessions) where AI use is either uniformly restricted or where the institution provides standardized access tokens to a specific AI model for all students during the exam. This ensures that grading strictly reflects the student's intellectual competence, rather than their purchasing power."
+      }
+    },
+    {
+      "id": 17,
+      "pt": {
+        "titulo": "Diretriz A.17: Uso Responsável da IA para Acessibilidade Digital",
+        "principio": "Os alunos devem ser instruídos de que os LLMs frequentemente reproduzem padrões históricos de inacessibilidade de código presentes em seus dados de treinamento. O uso de IA generativa no desenvolvimento de software deve ser rigorosamente acompanhado de validações de acessibilidade digital.",
+        "aplicacao": "Exija que todo código de interface de usuário (front-end) gerado por IA passe por auditorias manuais de acessibilidade usando ferramentas de validação de contraste WCAG ou leitores de tela. Os alunos devem identificar e corrigir ativamente saídas de IA que omitem atributos ARIA ou falham em suportar navegação por teclado."
+      },
+      "en": {
+        "title": "Guideline A.17: Responsible AI Use for Digital Accessibility",
+        "principle": "Students must be instructed that LLMs frequently reproduce historical patterns of code inaccessibility present in their training data. The use of generative AI in software development must be rigorously accompanied by digital accessibility validations.",
+        "application": "Mandate that all AI-generated user interface (front-end) code undergoes manual accessibility audits using WCAG (Web Content Accessibility Guidelines) contrast validation tools or screen readers. Students must actively identify and correct AI outputs that omit ARIA (Accessible Rich Internet Applications) attributes or fail to support keyboard navigation."
+      }
+    }
+  ]
+}

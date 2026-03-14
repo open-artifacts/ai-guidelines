@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23667eea'>🧠</text></svg>">
+    <title id="pageTitle">Diretrizes IA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .language-toggle {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .lang-btn {
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .lang-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .globe-icon {
+            font-size: 24px;
+        }
+
+        .search-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 16px;
+            background: white;
+            color: #333;
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-content {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .card-principle {
+            margin-bottom: 12px;
+        }
+
+        .card-application {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #ccc;
+            font-style: italic;
+            color: #555;
+        }
+
+        .principle-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-right: 5px;
+        }
+
+        .application-label {
+            font-weight: 600;
+            color: #667eea;
+            font-style: normal;
+        }
+
+        .rating-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .rating-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .stars {
+            display: flex;
+            gap: 5px;
+            font-size: 28px;
+        }
+
+        .star {
+            cursor: pointer;
+            color: #ddd;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .star.filled {
+            color: #ffc107;
+        }
+
+        .star:hover {
+            transform: scale(1.2);
+        }
+
+        .rating-info {
+            font-size: 13px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .average-score {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .loading {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-title {
+                font-size: 22px;
+                width: 100%;
+            }
+
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-title" id="siteTitle">Diretrizes para o Uso de Inteligência Artificial Generativa no Ensino de Programação</div>
+        <div class="language-toggle">
+            <span class="globe-icon">🌐</span>
+            <button class="lang-btn active" id="ptBtn" data-lang="pt">PT-BR</button>
+            <button class="lang-btn" id="enBtn" data-lang="en">EN-US</button>
+        </div>
+    </header>
+
+    <div class="search-container">
+        <input 
+            type="text" 
+            class="search-input" 
+            id="searchInput" 
+            placeholder="Pesquisar diretrizes..."
+        >
+    </div>
+
+    <div class="cards-container" id="cardsContainer">
+        <div class="loading" id="loadingMessage">Carregando...</div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // CONFIGURAÇÃO DO SUPABASE
+        // Substitua pelos valores do seu projeto em: supabase.com > Settings > API
+        // =====================================================================
+        const SUPABASE_URL = 'https://mimxngiqhqyevqhllrvc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbXhuZ2lxaHF5ZXZxaGxscnZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDE0NTcsImV4cCI6MjA4OTA3NzQ1N30.w-B2oThl8Qe1zSIs3khjI2ABpZOB_AHiVoQR2qY2_Ic';
+
+        // =====================================================================
+        // Cliente REST mínimo para Supabase (sem dependência de SDK)
+        // =====================================================================
+        const supabase = {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+            },
+
+            async fetchRatings() {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/ratings?select=id,votes,total_score,average&order=id`,
+                    { headers: this.headers }
+                );
+                if (!res.ok) throw new Error('Erro ao carregar ratings');
+                const rows = await res.json();
+                // Mapeia para o formato esperado pelo front-end
+                return rows.map(r => ({
+                    id: r.id,
+                    votes: r.votes,
+                    totalScore: r.total_score,
+                    average: parseFloat(r.average)
+                }));
+            },
+
+            async submitRating(ratingId, score) {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/rpc/submit_rating`,
+                    {
+                        method: 'POST',
+                        headers: this.headers,
+                        body: JSON.stringify({ rating_id: ratingId, score: score })
+                    }
+                );
+                if (!res.ok) throw new Error('Erro ao enviar rating');
+                return await res.json();
+            }
+        };
+
+        // =====================================================================
+        // Estado da aplicação
+        // =====================================================================
+        let currentLanguage = 'pt';
+        let diretrizesData = [];
+        let ratingsData = [];
+
+        // =====================================================================
+        // Funções utilitárias
+        // =====================================================================
+        function normalizeText(text) {
+            return text
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^\w\s]/g, '')
+                .trim();
+        }
+
+        // =====================================================================
+        // Carregamento de dados
+        // =====================================================================
+        async function loadData() {
+            try {
+                // Carregar diretrizes (arquivo estático local)
+                const diretrizesResponse = await fetch('diretrizes.json');
+                const diretrizesJSON = await diretrizesResponse.json();
+                diretrizesData = diretrizesJSON.diretrizes;
+
+                // Carregar ratings (Supabase)
+                ratingsData = await supabase.fetchRatings();
+
+                renderCards();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                document.getElementById('cardsContainer').innerHTML = 
+                    '<div class="no-results">Erro ao carregar dados. Verifique a configuração do Supabase.</div>';
+            }
+        }
+
+        // =====================================================================
+        // Renderização dos cards
+        // =====================================================================
+        function renderCards(searchTerm = '') {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '';
+
+            const normalizedSearch = normalizeText(searchTerm);
+            let hasResults = false;
+
+            diretrizesData.forEach(diretriz => {
+                const langData = currentLanguage === 'pt' ? diretriz.pt : diretriz.en;
+                const titulo = langData.titulo || langData.title || '';
+                const principio = langData.principio || langData.principle || '';
+                const aplicacao = langData.aplicacao || langData.application || '';
+
+                const fullText = `${titulo} ${principio} ${aplicacao}`;
+                const normalizedFullText = normalizeText(fullText);
+
+                if (normalizedSearch && !normalizedFullText.includes(normalizedSearch)) {
+                    return;
+                }
+
+                hasResults = true;
+
+                const rating = ratingsData.find(r => r.id === diretriz.id);
+                const average = rating ? rating.average.toFixed(1) : '0.0';
+                const votes = rating ? rating.votes : 0;
+                const currentScore = rating ? Math.round(rating.average) : 0;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let contentHTML = `<div class="card-content">`;
+                contentHTML += `<div class="card-title">${titulo}</div>`;
+                contentHTML += `<div class="card-principle"><span class="principle-label">${currentLanguage === 'pt' ? 'Princípio:' : 'Principle:'}</span> ${principio}</div>`;
+                if (aplicacao) {
+                    contentHTML += `<div class="card-application"><span class="application-label">${currentLanguage === 'pt' ? 'Aplicação:' : 'Application:'}</span> ${aplicacao}</div>`;
+                }
+                contentHTML += `</div>`;
+
+                contentHTML += `
+                    <div class="rating-section">
+                        <span class="rating-label">${currentLanguage === 'pt' ? 'Avalie' : 'Rate'}</span>
+                        <div class="stars" data-id="${diretriz.id}">
+                            ${[1, 2, 3, 4, 5].map(star => 
+                                `<span class="star ${star <= currentScore ? 'filled' : ''}" data-star="${star}">★</span>`
+                            ).join('')}
+                        </div>
+                        <div class="rating-info">
+                            <span class="average-score">${average}/5.0</span>
+                            <span> (${votes} ${currentLanguage === 'pt' ? 'votos' : 'votes'})</span>
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = contentHTML;
+                container.appendChild(card);
+
+                // Event listeners para as estrelas
+                const starsContainer = card.querySelector('.stars');
+                const stars = card.querySelectorAll('.star');
+
+                stars.forEach(star => {
+                    star.addEventListener('click', async () => {
+                        const starValue = parseInt(star.dataset.star);
+                        await updateRating(diretriz.id, starValue);
+                    });
+
+                    star.addEventListener('mouseover', () => {
+                        const starValue = parseInt(star.dataset.star);
+                        stars.forEach((s, index) => {
+                            if (index < starValue) {
+                                s.classList.add('filled');
+                            } else {
+                                s.classList.remove('filled');
+                            }
+                        });
+                    });
+                });
+
+                starsContainer.addEventListener('mouseleave', () => {
+                    const rating = ratingsData.find(r => r.id === diretriz.id);
+                    const currentScore = rating ? Math.round(rating.average) : 0;
+                    stars.forEach((s, index) => {
+                        if (index < currentScore) {
+                            s.classList.add('filled');
+                        } else {
+                            s.classList.remove('filled');
+                        }
+                    });
+                });
+            });
+
+            if (!hasResults) {
+                container.innerHTML = `<div class="no-results">${currentLanguage === 'pt' ? 'Nenhuma diretriz encontrada.' : 'No guidelines found.'}</div>`;
+            }
+        }
+
+        // =====================================================================
+        // Atualização de rating (via Supabase RPC)
+        // =====================================================================
+        async function updateRating(diretrizId, score) {
+            try {
+                const updatedRating = await supabase.submitRating(diretrizId, score);
+
+                // Atualizar dados locais
+                const ratingIndex = ratingsData.findIndex(r => r.id === diretrizId);
+                if (ratingIndex !== -1) {
+                    ratingsData[ratingIndex] = updatedRating;
+                } else {
+                    ratingsData.push(updatedRating);
+                }
+
+                // Re-renderizar cards
+                renderCards(document.getElementById('searchInput').value);
+            } catch (error) {
+                console.error('Erro ao enviar rating:', error);
+            }
+        }
+
+        // =====================================================================
+        // Internacionalização
+        // =====================================================================
+        function detectSystemLanguage() {
+            const browserLanguage = navigator.language || navigator.userLanguage;
+            return browserLanguage.startsWith('en') ? 'en' : 'pt';
+        }
+
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+
+            document.getElementById('ptBtn').classList.toggle('active', lang === 'pt');
+            document.getElementById('enBtn').classList.toggle('active', lang === 'en');
+
+            document.getElementById('pageTitle').textContent = 
+                lang === 'pt' ? 'Diretrizes de IA' : 'AI Guidelines';
+
+            document.getElementById('siteTitle').textContent = 
+                lang === 'pt' ? 'Diretrizes para o Uso de Inteligência Artificial Generativa no Ensino de Programação' : 'Guidelines for Using Generative Artificial Intelligence in Programming Education';
+
+            document.getElementById('searchInput').placeholder = 
+                lang === 'pt' ? 'Pesquisar diretrizes...' : 'Search guidelines...';
+
+            renderCards(document.getElementById('searchInput').value);
+        }
+
+        // =====================================================================
+        // Event listeners
+        // =====================================================================
+        document.getElementById('ptBtn').addEventListener('click', () => changeLanguage('pt'));
+        document.getElementById('enBtn').addEventListener('click', () => changeLanguage('en'));
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderCards(e.target.value);
+        });
+
+        // Inicialização
+        loadData();
+
+        window.addEventListener('load', () => {
+            const systemLanguage = detectSystemLanguage();
+            changeLanguage(systemLanguage);
+        });
+    </script>
+</body>
+</html>
