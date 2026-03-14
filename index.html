@@ -154,7 +154,7 @@
         .rating-section {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             border-top: 1px solid #eee;
             padding-top: 15px;
         }
@@ -183,6 +183,11 @@
             color: #ffc107;
         }
 
+        /* Estrela que representa o voto do próprio usuário */
+        .star.user-voted {
+            color: #667eea;
+        }
+
         .star:hover {
             transform: scale(1.2);
         }
@@ -190,13 +195,69 @@
         .rating-info {
             font-size: 13px;
             color: #666;
-            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 20px;
         }
 
         .average-score {
             font-weight: bold;
             color: #667eea;
             font-size: 14px;
+        }
+
+        /* Indicador de "Seu voto" */
+        .user-vote-badge {
+            font-size: 11px;
+            color: white;
+            background: #667eea;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: all 0.3s ease;
+        }
+
+        .user-vote-badge.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Toast de feedback */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.35s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Animação de pulso ao votar */
+        @keyframes votePulse {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.35); }
+            100% { transform: scale(1); }
+        }
+
+        .star.pulse {
+            animation: votePulse 0.35s ease;
         }
 
         .no-results {
@@ -255,6 +316,9 @@
         <div class="loading" id="loadingMessage">Carregando...</div>
     </div>
 
+    <!-- Toast de feedback -->
+    <div class="toast" id="toast"></div>
+
     <script>
         // =====================================================================
         // CONFIGURAÇÃO DO SUPABASE
@@ -264,7 +328,22 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbXhuZ2lxaHF5ZXZxaGxscnZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDE0NTcsImV4cCI6MjA4OTA3NzQ1N30.w-B2oThl8Qe1zSIs3khjI2ABpZOB_AHiVoQR2qY2_Ic';
 
         // =====================================================================
-        // Cliente REST mínimo para Supabase (sem dependência de SDK)
+        // Identificação anônima do votante
+        // =====================================================================
+        function getVoterId() {
+            const key = 'diretrizes_voter_id';
+            let id = localStorage.getItem(key);
+            if (!id) {
+                id = crypto.randomUUID();
+                localStorage.setItem(key, id);
+            }
+            return id;
+        }
+
+        const VOTER_ID = getVoterId();
+
+        // =====================================================================
+        // Cliente REST mínimo para Supabase (sem SDK)
         // =====================================================================
         const supabase = {
             headers: {
@@ -273,32 +352,73 @@
                 'Content-Type': 'application/json'
             },
 
+            // Busca resumo agregado de todos os ratings (via view)
             async fetchRatings() {
                 const res = await fetch(
-                    `${SUPABASE_URL}/rest/v1/ratings?select=id,votes,total_score,average&order=id`,
+                    `${SUPABASE_URL}/rest/v1/ratings_summary?select=rating_id,votes,average&order=rating_id`,
                     { headers: this.headers }
                 );
                 if (!res.ok) throw new Error('Erro ao carregar ratings');
                 const rows = await res.json();
-                // Mapeia para o formato esperado pelo front-end
                 return rows.map(r => ({
-                    id: r.id,
+                    id: r.rating_id,
                     votes: r.votes,
-                    totalScore: r.total_score,
                     average: parseFloat(r.average)
                 }));
             },
 
-            async submitRating(ratingId, score) {
+            // Busca os votos do usuário atual
+            async fetchMyVotes() {
                 const res = await fetch(
-                    `${SUPABASE_URL}/rest/v1/rpc/submit_rating`,
+                    `${SUPABASE_URL}/rest/v1/rpc/get_voter_votes`,
                     {
                         method: 'POST',
                         headers: this.headers,
-                        body: JSON.stringify({ rating_id: ratingId, score: score })
+                        body: JSON.stringify({ p_voter_id: VOTER_ID })
                     }
                 );
-                if (!res.ok) throw new Error('Erro ao enviar rating');
+                if (!res.ok) throw new Error('Erro ao carregar votos');
+                const votes = await res.json();
+                // Retorna um Map: ratingId -> score
+                const map = {};
+                if (Array.isArray(votes)) {
+                    votes.forEach(v => { map[v.ratingId] = v.score; });
+                }
+                return map;
+            },
+
+            // Submete ou atualiza voto (UPSERT)
+            async submitVote(ratingId, score) {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/rpc/submit_vote`,
+                    {
+                        method: 'POST',
+                        headers: this.headers,
+                        body: JSON.stringify({
+                            p_rating_id: ratingId,
+                            p_voter_id: VOTER_ID,
+                            p_score: score
+                        })
+                    }
+                );
+                if (!res.ok) throw new Error('Erro ao enviar voto');
+                return await res.json();
+            },
+
+            // Remove voto
+            async removeVote(ratingId) {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/rpc/remove_vote`,
+                    {
+                        method: 'POST',
+                        headers: this.headers,
+                        body: JSON.stringify({
+                            p_rating_id: ratingId,
+                            p_voter_id: VOTER_ID
+                        })
+                    }
+                );
+                if (!res.ok) throw new Error('Erro ao remover voto');
                 return await res.json();
             }
         };
@@ -309,6 +429,19 @@
         let currentLanguage = 'pt';
         let diretrizesData = [];
         let ratingsData = [];
+        let myVotes = {};     // { ratingId: score }
+
+        // =====================================================================
+        // Toast de feedback
+        // =====================================================================
+        let toastTimer = null;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
 
         // =====================================================================
         // Funções utilitárias
@@ -327,13 +460,16 @@
         // =====================================================================
         async function loadData() {
             try {
-                // Carregar diretrizes (arquivo estático local)
-                const diretrizesResponse = await fetch('diretrizes.json');
+                const [diretrizesResponse, ratings, votes] = await Promise.all([
+                    fetch('diretrizes.json'),
+                    supabase.fetchRatings(),
+                    supabase.fetchMyVotes()
+                ]);
+
                 const diretrizesJSON = await diretrizesResponse.json();
                 diretrizesData = diretrizesJSON.diretrizes;
-
-                // Carregar ratings (Supabase)
-                ratingsData = await supabase.fetchRatings();
+                ratingsData = ratings;
+                myVotes = votes;
 
                 renderCards();
             } catch (error) {
@@ -371,30 +507,50 @@
                 const rating = ratingsData.find(r => r.id === diretriz.id);
                 const average = rating ? rating.average.toFixed(1) : '0.0';
                 const votes = rating ? rating.votes : 0;
-                const currentScore = rating ? Math.round(rating.average) : 0;
+                const communityScore = rating ? Math.round(rating.average) : 0;
+                const userScore = myVotes[diretriz.id] || 0;
+                const hasVoted = userScore > 0;
 
                 const card = document.createElement('div');
                 card.className = 'card';
 
+                // Labels i18n
+                const labelRate = currentLanguage === 'pt' ? 'Avalie esta diretriz' : 'Rate this guideline';
+                const labelYourVote = currentLanguage === 'pt' ? 'Seu voto' : 'Your vote';
+                const labelVotes = currentLanguage === 'pt' ? 'votos' : 'votes';
+                const labelVote = currentLanguage === 'pt' ? 'voto' : 'vote';
+                const labelPrinciple = currentLanguage === 'pt' ? 'Princípio:' : 'Principle:';
+                const labelApplication = currentLanguage === 'pt' ? 'Aplicação:' : 'Application:';
+
                 let contentHTML = `<div class="card-content">`;
                 contentHTML += `<div class="card-title">${titulo}</div>`;
-                contentHTML += `<div class="card-principle"><span class="principle-label">${currentLanguage === 'pt' ? 'Princípio:' : 'Principle:'}</span> ${principio}</div>`;
+                contentHTML += `<div class="card-principle"><span class="principle-label">${labelPrinciple}</span> ${principio}</div>`;
                 if (aplicacao) {
-                    contentHTML += `<div class="card-application"><span class="application-label">${currentLanguage === 'pt' ? 'Aplicação:' : 'Application:'}</span> ${aplicacao}</div>`;
+                    contentHTML += `<div class="card-application"><span class="application-label">${labelApplication}</span> ${aplicacao}</div>`;
                 }
                 contentHTML += `</div>`;
 
+                // Stars: se o usuário já votou, mostra o voto dele em roxo;
+                // senão, mostra a média da comunidade em amarelo
+                const displayScore = hasVoted ? userScore : communityScore;
+                const starClass = hasVoted ? 'user-voted' : 'filled';
+
                 contentHTML += `
                     <div class="rating-section">
-                        <span class="rating-label">${currentLanguage === 'pt' ? 'Avalie' : 'Rate'}</span>
+                        <span class="rating-label">${hasVoted ? labelYourVote : labelRate}</span>
                         <div class="stars" data-id="${diretriz.id}">
                             ${[1, 2, 3, 4, 5].map(star => 
-                                `<span class="star ${star <= currentScore ? 'filled' : ''}" data-star="${star}">★</span>`
+                                `<span class="star ${star <= displayScore ? starClass : ''}" data-star="${star}">★</span>`
                             ).join('')}
                         </div>
                         <div class="rating-info">
-                            <span class="average-score">${average}/5.0</span>
-                            <span> (${votes} ${currentLanguage === 'pt' ? 'votos' : 'votes'})</span>
+                            <span>
+                                <span class="average-score">${average}/5.0</span>
+                                <span> (${votes} ${votes === 1 ? labelVote : labelVotes})</span>
+                            </span>
+                            <span class="user-vote-badge ${hasVoted ? 'visible' : ''}" data-badge="${diretriz.id}">
+                                ${hasVoted ? (userScore + '★') : ''}
+                            </span>
                         </div>
                     </div>
                 `;
@@ -409,29 +565,29 @@
                 stars.forEach(star => {
                     star.addEventListener('click', async () => {
                         const starValue = parseInt(star.dataset.star);
-                        await updateRating(diretriz.id, starValue);
+                        await handleVote(diretriz.id, starValue);
                     });
 
                     star.addEventListener('mouseover', () => {
                         const starValue = parseInt(star.dataset.star);
                         stars.forEach((s, index) => {
+                            s.classList.remove('filled', 'user-voted');
                             if (index < starValue) {
-                                s.classList.add('filled');
-                            } else {
-                                s.classList.remove('filled');
+                                s.classList.add('user-voted');
                             }
                         });
                     });
                 });
 
                 starsContainer.addEventListener('mouseleave', () => {
-                    const rating = ratingsData.find(r => r.id === diretriz.id);
-                    const currentScore = rating ? Math.round(rating.average) : 0;
+                    const uScore = myVotes[diretriz.id] || 0;
+                    const cScore = communityScore;
+                    const dScore = uScore > 0 ? uScore : cScore;
+                    const cls = uScore > 0 ? 'user-voted' : 'filled';
                     stars.forEach((s, index) => {
-                        if (index < currentScore) {
-                            s.classList.add('filled');
-                        } else {
-                            s.classList.remove('filled');
+                        s.classList.remove('filled', 'user-voted');
+                        if (index < dScore) {
+                            s.classList.add(cls);
                         }
                     });
                 });
@@ -443,24 +599,58 @@
         }
 
         // =====================================================================
-        // Atualização de rating (via Supabase RPC)
+        // Lógica de votação
         // =====================================================================
-        async function updateRating(diretrizId, score) {
+        async function handleVote(diretrizId, score) {
             try {
-                const updatedRating = await supabase.submitRating(diretrizId, score);
+                const currentVote = myVotes[diretrizId] || 0;
 
-                // Atualizar dados locais
-                const ratingIndex = ratingsData.findIndex(r => r.id === diretrizId);
-                if (ratingIndex !== -1) {
-                    ratingsData[ratingIndex] = updatedRating;
+                if (currentVote === score) {
+                    // Clicou na mesma estrela: remove o voto
+                    const result = await supabase.removeVote(diretrizId);
+                    delete myVotes[diretrizId];
+                    updateRatingsLocal(diretrizId, result);
+                    showToast(currentLanguage === 'pt' ? 'Voto removido' : 'Vote removed');
                 } else {
-                    ratingsData.push(updatedRating);
+                    // Novo voto ou alteração
+                    const result = await supabase.submitVote(diretrizId, score);
+                    myVotes[diretrizId] = score;
+                    updateRatingsLocal(diretrizId, result);
+
+                    const isUpdate = currentVote > 0;
+                    const msg = currentLanguage === 'pt'
+                        ? (isUpdate ? `Voto atualizado para ${score}★` : `Voto registrado: ${score}★`)
+                        : (isUpdate ? `Vote updated to ${score}★` : `Vote recorded: ${score}★`);
+                    showToast(msg);
                 }
 
-                // Re-renderizar cards
+                // Animação de pulso na estrela clicada
+                const starEl = document.querySelector(`.stars[data-id="${diretrizId}"] .star[data-star="${score}"]`);
+                if (starEl) {
+                    starEl.classList.remove('pulse');
+                    void starEl.offsetWidth; // force reflow
+                    starEl.classList.add('pulse');
+                }
+
                 renderCards(document.getElementById('searchInput').value);
             } catch (error) {
-                console.error('Erro ao enviar rating:', error);
+                console.error('Erro ao votar:', error);
+                showToast(currentLanguage === 'pt' ? 'Erro ao registrar voto' : 'Error recording vote');
+            }
+        }
+
+        function updateRatingsLocal(diretrizId, result) {
+            if (!result) return;
+            const idx = ratingsData.findIndex(r => r.id === diretrizId);
+            const updated = {
+                id: result.ratingId || diretrizId,
+                votes: result.votes,
+                average: parseFloat(result.average)
+            };
+            if (idx !== -1) {
+                ratingsData[idx] = updated;
+            } else {
+                ratingsData.push(updated);
             }
         }
 

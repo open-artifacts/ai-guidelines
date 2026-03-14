@@ -1,72 +1,115 @@
 -- =============================================================
--- Diretrizes IA - Supabase Setup
+-- Diretrizes IA - Supabase Setup (v2 - Modelo Normalizado)
 -- Execute este script no SQL Editor do Supabase Dashboard
+--
+-- ATENÇÃO: Se você já rodou a v1, execute primeiro:
+--   DROP FUNCTION IF EXISTS submit_rating(INTEGER, INTEGER);
+--   DROP POLICY IF EXISTS "ratings_select_policy" ON ratings;
+--   DROP TABLE IF EXISTS ratings;
 -- =============================================================
 
--- 1. Criar tabela de ratings
-CREATE TABLE IF NOT EXISTS ratings (
-    id INTEGER PRIMARY KEY,
-    votes INTEGER NOT NULL DEFAULT 0,
-    total_score INTEGER NOT NULL DEFAULT 0,
-    average NUMERIC(4,2) NOT NULL DEFAULT 0.00
+-- 1. Tabela de votos individuais
+CREATE TABLE IF NOT EXISTS votes (
+    rating_id  INTEGER NOT NULL,
+    voter_id   UUID    NOT NULL,
+    score      INTEGER NOT NULL CHECK (score >= 1 AND score <= 5),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (rating_id, voter_id)
 );
 
--- 2. Inserir dados iniciais (migrados do ratings.json atual)
-INSERT INTO ratings (id, votes, total_score, average) VALUES
-    (1,  7,  29,  4.14),
-    (2,  4,  12,  3.00),
-    (3,  1,  3,   3.00),
-    (4,  1,  4,   4.00),
-    (5,  1,  2,   2.00),
-    (6,  3,  10,  3.33),
-    (7,  2,  6,   3.00),
-    (8,  3,  10,  3.33),
-    (9,  2,  6,   3.00),
-    (10, 2,  6,   3.00),
-    (11, 4,  14,  3.50),
-    (12, 30, 146, 4.87),
-    (13, 8,  12,  1.50),
-    (14, 9,  22,  2.44),
-    (15, 2,  6,   3.00),
-    (16, 4,  14,  3.50),
-    (17, 5,  16,  3.20)
-ON CONFLICT (id) DO NOTHING;
+-- Índice para buscar votos de um voter_id rapidamente
+CREATE INDEX IF NOT EXISTS idx_votes_voter ON votes (voter_id);
 
--- 3. Habilitar RLS (Row Level Security)
-ALTER TABLE ratings ENABLE ROW LEVEL SECURITY;
+-- 2. View de agregação (substitui a tabela ratings)
+CREATE OR REPLACE VIEW ratings_summary AS
+SELECT
+    rating_id,
+    COUNT(*)::INTEGER           AS votes,
+    ROUND(AVG(score), 2)        AS average
+FROM votes
+GROUP BY rating_id;
 
--- Permitir leitura pública (anon)
-CREATE POLICY "ratings_select_policy" ON ratings
+-- 3. RLS (Row Level Security)
+ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+
+-- Leitura pública
+CREATE POLICY "votes_select_policy" ON votes
     FOR SELECT TO anon USING (true);
 
--- 4. Função RPC para submeter voto de forma atômica
---    Evita race conditions (equivalente ao lock do server.js)
-CREATE OR REPLACE FUNCTION submit_rating(rating_id INTEGER, score INTEGER)
+-- 4. Função RPC: submeter ou atualizar voto (UPSERT atômico)
+CREATE OR REPLACE FUNCTION submit_vote(
+    p_rating_id INTEGER,
+    p_voter_id  UUID,
+    p_score     INTEGER
+)
 RETURNS JSON AS $$
 DECLARE
     result JSON;
 BEGIN
-    -- Validar score
-    IF score < 1 OR score > 5 THEN
+    IF p_score < 1 OR p_score > 5 THEN
         RAISE EXCEPTION 'Score deve ser entre 1 e 5';
     END IF;
 
-    -- Atualizar atomicamente
-    UPDATE ratings r
-    SET votes       = r.votes + 1,
-        total_score = r.total_score + score,
-        average     = ROUND((r.total_score + score)::NUMERIC / (r.votes + 1), 2)
-    WHERE r.id = rating_id;
+    INSERT INTO votes (rating_id, voter_id, score, updated_at)
+    VALUES (p_rating_id, p_voter_id, p_score, now())
+    ON CONFLICT (rating_id, voter_id)
+    DO UPDATE SET score = p_score, updated_at = now();
 
-    -- Retornar o registro atualizado
     SELECT row_to_json(t) INTO result
-    FROM (SELECT r.id, r.votes, r.total_score AS "totalScore", r.average
-          FROM ratings r WHERE r.id = rating_id) t;
-
-    IF result IS NULL THEN
-        RAISE EXCEPTION 'Rating ID % não encontrado', rating_id;
-    END IF;
+    FROM (
+        SELECT
+            rating_id   AS "ratingId",
+            COUNT(*)    AS "votes",
+            ROUND(AVG(score), 2) AS "average"
+        FROM votes
+        WHERE rating_id = p_rating_id
+        GROUP BY rating_id
+    ) t;
 
     RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Função RPC: remover voto
+CREATE OR REPLACE FUNCTION remove_vote(
+    p_rating_id INTEGER,
+    p_voter_id  UUID
+)
+RETURNS JSON AS $$
+DECLARE
+    result JSON;
+BEGIN
+    DELETE FROM votes
+    WHERE rating_id = p_rating_id AND voter_id = p_voter_id;
+
+    SELECT row_to_json(t) INTO result
+    FROM (
+        SELECT
+            p_rating_id         AS "ratingId",
+            COALESCE(COUNT(*), 0)    AS "votes",
+            COALESCE(ROUND(AVG(score), 2), 0) AS "average"
+        FROM votes
+        WHERE rating_id = p_rating_id
+    ) t;
+
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. Função RPC: buscar votos de um voter_id
+CREATE OR REPLACE FUNCTION get_voter_votes(p_voter_id UUID)
+RETURNS JSON AS $$
+DECLARE
+    result JSON;
+BEGIN
+    SELECT json_agg(row_to_json(t)) INTO result
+    FROM (
+        SELECT rating_id AS "ratingId", score
+        FROM votes
+        WHERE voter_id = p_voter_id
+    ) t;
+
+    RETURN COALESCE(result, '[]'::JSON);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
