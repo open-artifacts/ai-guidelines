@@ -1,0 +1,309 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+header {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+}
+
+.language-toggle {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.lang-btn {
+    padding: 10px 15px;
+    border: 2px solid #667eea;
+    background: white;
+    color: #667eea;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.lang-btn.active {
+    background: #667eea;
+    color: white;
+}
+
+.lang-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.globe-icon {
+    font-size: 24px;
+}
+
+.search-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 30px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    font-size: 16px;
+    background: white;
+    color: #333;
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-content {
+    color: #333;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    flex-grow: 1;
+}
+
+.card-title {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.card-principle {
+    margin-bottom: 12px;
+}
+
+.card-application {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ccc;
+    font-style: italic;
+    color: #555;
+}
+
+.principle-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-right: 5px;
+}
+
+.application-label {
+    font-weight: 600;
+    color: #667eea;
+    font-style: normal;
+}
+
+.rating-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.rating-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.stars {
+    display: flex;
+    gap: 5px;
+    font-size: 28px;
+}
+
+.star {
+    cursor: pointer;
+    color: #ddd;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.star.filled {
+    color: #ffc107;
+}
+
+/* Estrela que representa o voto do proprio usuario */
+.star.user-voted {
+    color: #667eea;
+}
+
+.star:hover {
+    transform: scale(1.2);
+}
+
+/* Foco visivel para navegacao por teclado (Diretriz A.17) */
+.star:focus-visible {
+    outline: 3px solid #764ba2;
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.rating-info {
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 20px;
+}
+
+.average-score {
+    font-weight: bold;
+    color: #667eea;
+    font-size: 14px;
+}
+
+/* Indicador de "Seu voto" */
+.user-vote-badge {
+    font-size: 11px;
+    color: white;
+    background: #667eea;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.3s ease;
+}
+
+.user-vote-badge.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Toast de feedback */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #333;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.35s ease;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Animacao de pulso ao votar */
+@keyframes votePulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+.star.pulse {
+    animation: votePulse 0.35s ease;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    color: white;
+    font-size: 18px;
+}
+
+.loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    color: white;
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .header-title {
+        font-size: 22px;
+        width: 100%;
+    }
+
+    .cards-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Respeita usuarios que preferem menos movimento (Diretriz A.17) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    .card:hover,
+    .star:hover,
+    .lang-btn:hover {
+        transform: none;
+    }
+}

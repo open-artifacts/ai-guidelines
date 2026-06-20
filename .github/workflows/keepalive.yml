@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+# Mantem o projeto Free do Supabase ativo, evitando a pausa por inatividade
+# (7 dias sem atividade no banco). Roda todo dia, com folga grande dentro
+# da janela de 7 dias mesmo que o GitHub atrase ou pule alguma execucao.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # diariamente, 06:00 UTC (03:00 em Brasilia)
+  workflow_dispatch:        # permite disparar manualmente pela aba Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping no banco via RPC keepalive
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Enviando keepalive para o Supabase..."
+          curl --fail --silent --show-error \
+            -X POST "${SUPABASE_URL}/rest/v1/rpc/keepalive" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo ""
+          echo "Keepalive concluido."
