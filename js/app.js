@@ -3,7 +3,7 @@
 // ============================================================
 // Configuracao (definida em js/config.js)
 // ============================================================
-const { SUPABASE_URL, SUPABASE_ANON_KEY } = APP_CONFIG;
+const API_URL = APP_CONFIG.API_URL.replace(/\/$/, '');
 
 // ============================================================
 // Internacionalizacao
@@ -23,7 +23,7 @@ const STRINGS = {
     principle: 'Princípio:',
     application: 'Aplicação:',
     noResults: 'Nenhuma diretriz encontrada.',
-    loadError: 'Erro ao carregar dados. Verifique a configuração do Supabase.',
+    loadError: 'Erro ao carregar dados. Tente novamente em instantes.',
     voteRemoved: 'Voto removido',
     voteError: 'Erro ao registrar voto',
     voteRegistered: (score) => `Voto registrado: ${score}★`,
@@ -43,7 +43,7 @@ const STRINGS = {
     principle: 'Principle:',
     application: 'Application:',
     noResults: 'No guidelines found.',
-    loadError: 'Error loading data. Check the Supabase configuration.',
+    loadError: 'Error loading data. Please try again shortly.',
     voteRemoved: 'Vote removed',
     voteError: 'Error recording vote',
     voteRegistered: (score) => `Vote recorded: ${score}★`,
@@ -126,69 +126,35 @@ function getVoterId() {
 const VOTER_ID = getVoterId();
 
 // ============================================================
-// Cliente REST minimo para Supabase (sem SDK)
+// Cliente da API de votos (veja server/)
 // ============================================================
-const supabase = {
-  headers: {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json',
-  },
-
-  async rpc(name, body) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify(body),
-    });
+const api = {
+  async request(path, options) {
+    const res = await fetch(`${API_URL}${path}`, options);
     if (!res.ok) {
-      throw new Error(`RPC ${name} falhou (HTTP ${res.status})`);
+      throw new Error(`${options?.method || 'GET'} ${path} falhou (HTTP ${res.status})`);
     }
     return res.json();
   },
 
-  // Resumo agregado de todos os ratings (via view).
-  async fetchRatings() {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ratings_summary?select=rating_id,votes,average&order=rating_id`,
-      { headers: this.headers }
-    );
-    if (!res.ok) throw new Error('Erro ao carregar ratings');
-    const rows = await res.json();
-    return rows.map((r) => ({
-      id: r.rating_id,
-      votes: r.votes,
-      average: parseFloat(r.average),
-    }));
-  },
-
-  // Votos do usuario atual, como mapa { ratingId: score }.
-  async fetchMyVotes() {
-    const votes = await this.rpc('get_voter_votes', { p_voter_id: VOTER_ID });
-    const map = {};
-    if (Array.isArray(votes)) {
-      votes.forEach((v) => {
-        map[v.ratingId] = v.score;
-      });
-    }
-    return map;
+  // Medias de todas as diretrizes e os votos do usuario atual, numa so chamada:
+  // { ratings: [{ id, votes, average }], myVotes: { ratingId: score } }
+  fetchState() {
+    return this.request(`/api/state?voter=${VOTER_ID}`);
   },
 
   // Submete ou atualiza voto (UPSERT atomico no banco).
   submitVote(ratingId, score) {
-    return this.rpc('submit_vote', {
-      p_rating_id: ratingId,
-      p_voter_id: VOTER_ID,
-      p_score: score,
+    return this.request(`/api/votes/${ratingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voter: VOTER_ID, score }),
     });
   },
 
   // Remove voto.
   removeVote(ratingId) {
-    return this.rpc('remove_vote', {
-      p_rating_id: ratingId,
-      p_voter_id: VOTER_ID,
-    });
+    return this.request(`/api/votes/${ratingId}?voter=${VOTER_ID}`, { method: 'DELETE' });
   },
 };
 
@@ -209,16 +175,15 @@ function showToast(message) {
 // ============================================================
 async function loadData() {
   try {
-    const [diretrizesResponse, ratings, votes] = await Promise.all([
+    const [diretrizesResponse, state] = await Promise.all([
       fetch('diretrizes.json'),
-      supabase.fetchRatings(),
-      supabase.fetchMyVotes(),
+      api.fetchState(),
     ]);
 
     const diretrizesJSON = await diretrizesResponse.json();
     diretrizesData = diretrizesJSON.diretrizes;
-    ratingsData = ratings;
-    myVotes = votes;
+    ratingsData = state.ratings;
+    myVotes = state.myVotes;
 
     renderCards();
   } catch (error) {
@@ -397,13 +362,13 @@ async function handleVote(diretrizId, score) {
 
     if (currentVote === score) {
       // Clicou na mesma estrela: remove o voto (toggle).
-      const result = await supabase.removeVote(diretrizId);
+      const result = await api.removeVote(diretrizId);
       delete myVotes[diretrizId];
       updateRatingsLocal(diretrizId, result);
       showToast(t('voteRemoved'));
     } else {
       // Novo voto ou alteracao.
-      const result = await supabase.submitVote(diretrizId, score);
+      const result = await api.submitVote(diretrizId, score);
       myVotes[diretrizId] = score;
       updateRatingsLocal(diretrizId, result);
       showToast(currentVote > 0 ? t('voteUpdated', score) : t('voteRegistered', score));
