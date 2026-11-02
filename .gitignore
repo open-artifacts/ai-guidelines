@@ -1,4 +1,4 @@
 .env
 node_modules/
-server/data/
+api/data/
 votes*.json

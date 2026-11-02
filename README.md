@@ -1,39 +1,42 @@
-# Diretrizes IA: GitHub Pages + API própria
+# Diretrizes IA
 
-Catálogo interativo de diretrizes para uso de IA Generativa no ensino de programação, com sistema de avaliação (rating) compartilhado e controle de voto único por usuário.
+Catálogo interativo de diretrizes para uso de IA Generativa no ensino de programação, com avaliação (rating) compartilhada e controle de voto único por usuário.
 
-## Arquitetura
-
-```
-GitHub Pages (estático)            VPS (Docker)
-┌──────────────────────┐  HTTPS   ┌─────────────────────────┐
-│  index.html          │◄────────►│  Caddy (opcional, TLS)  │
-│  css/ js/            │   JSON   │    └─► API Node (server/)│
-│  diretrizes.json     │          │          └─► SQLite      │
-└──────────────────────┘          └─────────────────────────┘
-        ▲
-   localStorage (voter_id UUID)
-```
-
-- **Site**: arquivos estáticos, publicados pelo GitHub Pages (deploy = `git push`).
-- **API**: ~200 linhas de Node, **sem dependências npm** (usa só `node:http` e `node:sqlite`).
-- **Banco**: um único arquivo SQLite com uma tabela (`votes`), em um volume Docker. Não há serviço de banco para administrar e nada que "pause" por inatividade.
-
-## Estrutura de arquivos
+## Como as peças se encaixam
 
 ```
-├── index.html, css/, js/, diretrizes.json   # Site (js/config.js: URL da API)
-├── server/
-│   ├── app.js            # Rotas HTTP, validação, CORS e limite de requisições
-│   ├── db.js             # SQLite: schema, consultas, importação e backup
-│   ├── index.js          # Inicialização + backup diário
-│   ├── import-votes.js   # Importa votos exportados (migração do Supabase)
-│   ├── app.test.js       # Testes (node --test)
-│   └── Dockerfile
-├── docker-compose.yml    # api (+ caddy opcional com --profile https)
-├── Caddyfile             # HTTPS automático, sem logs de acesso
-└── .env.example
+ GitHub Pages                       VPS (Docker)
+┌───────────────┐   HTTPS / JSON   ┌───────────────────────────────┐
+│  web/         │ ───────────────► │  proxy (opcional, HTTPS)      │
+│  site estático│                  │     └─► api ──► SQLite (volume)│
+└───────────────┘                  └───────────────────────────────┘
 ```
+
+Cada pasta tem um papel, e cada serviço do Docker tem o nome da pasta que o define:
+
+| Pasta / arquivo | Papel |
+|-----------------|-------|
+| `web/` | Site estático (HTML, CSS, JS e `diretrizes.json`). Publicado no GitHub Pages |
+| `api/` | API de votos em Node, sem dependências npm, com SQLite. Tem o próprio `Dockerfile` e os testes |
+| `proxy/` | Caddy com HTTPS automático na frente da API (opcional) |
+| `compose.yaml` | **Produção** (VPS): `api` e, se quiser, `proxy` |
+| `compose.dev.yaml` | **Local**: `api` e `web` juntos, sem HTTPS e sem `.env` |
+| `.env.example` | Variáveis de produção |
+| `.github/workflows/pages.yml` | Publica `web/` no GitHub Pages a cada push na `main` |
+
+## Rodar localmente
+
+Requer só o Docker.
+
+```bash
+docker compose -f compose.dev.yaml up --build           # abra http://localhost:8080
+docker compose -f compose.dev.yaml run --rm api npm test  # 9 testes da API
+docker compose -f compose.dev.yaml down -v                # encerra e apaga os dados de teste
+```
+
+- O site (`web/`) é montado direto no container: edite os arquivos e recarregue a página, sem rebuild.
+- Mudou algo em `api/`? Rode o `up --build` de novo.
+- No ambiente local o `web/js/config.js` é substituído por uma versão que aponta para `http://localhost:3000`.
 
 ## API
 
@@ -48,6 +51,8 @@ PUT e DELETE respondem `{ ratingId, votes, average }`. Validações: diretriz en
 
 ### Modelo de dados
 
+Uma tabela, `votes`, em um único arquivo SQLite:
+
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | rating_id | INTEGER | ID da diretriz (1-17) |
@@ -57,20 +62,6 @@ PUT e DELETE respondem `{ ratingId, votes, average }`. Validações: diretriz en
 
 **PK** `(rating_id, voter_id)`: no máximo um voto por pessoa por diretriz.
 
-## Desenvolvimento local
-
-Requer Node 22.13 ou superior.
-
-```bash
-cd server
-npm test                                  # 9 testes, sem instalar nada
-ALLOWED_ORIGIN=http://localhost:8080 npm start    # API em http://localhost:3000
-```
-
-No PowerShell: `$env:ALLOWED_ORIGIN='http://localhost:8080'; npm start`.
-
-Em outro terminal, na raiz do projeto: `python -m http.server 8080` e abra http://localhost:8080 (o `js/config.js` já aponta para `http://localhost:3000`).
-
 ## Instalação na VPS
 
 Pré-requisito: Docker com o plugin Compose (`docker compose version`). Se faltar: `curl -fsSL https://get.docker.com | sh`.
@@ -78,16 +69,16 @@ Pré-requisito: Docker com o plugin Compose (`docker compose version`). Se falta
 ```bash
 git clone https://github.com/open-artifacts/ai-guidelines.git
 cd ai-guidelines
-cp .env.example .env        # edite ALLOWED_ORIGIN (e API_DOMAIN, se usar HTTPS pelo Caddy)
+cp .env.example .env        # edite ALLOWED_ORIGIN (e API_DOMAIN, se usar o proxy HTTPS)
 ```
 
-**Opção A: a VPS não tem nada nas portas 80/443.** O Caddy emite o certificado sozinho. Antes, crie um registro DNS do tipo A de `API_DOMAIN` para o IP da VPS.
+**Opção A: a VPS não tem nada nas portas 80/443.** O `proxy` emite o certificado sozinho. Antes, crie um registro DNS do tipo A de `API_DOMAIN` para o IP da VPS.
 
 ```bash
 docker compose --profile https up -d --build
 ```
 
-**Opção B: a VPS já tem Nginx/Caddy/Traefik.** Suba só a API (fica em `127.0.0.1:3000`, inacessível de fora) e aponte o proxy existente para ela:
+**Opção B: a VPS já tem Nginx/Caddy/Traefik.** Suba só a `api` (fica em `127.0.0.1:3000`, inacessível de fora) e aponte o proxy existente para ela:
 
 ```bash
 docker compose up -d --build
@@ -114,7 +105,7 @@ docker compose run --rm -v "$PWD/votes-supabase.json:/seed/votes.json:ro" \
   api node --disable-warning=ExperimentalWarning import-votes.js /seed/votes.json
 ```
 
-O comando mostra o resumo por diretriz. Rodar de novo não duplica nada (a importação é idempotente).
+O comando mostra o resumo por diretriz. Rodar de novo não duplica nada (a importação é idempotente). O mesmo vale para o ambiente local, trocando por `-f compose.dev.yaml`.
 
 ### Operação
 
@@ -125,7 +116,7 @@ O comando mostra o resumo por diretriz. Rodar de novo não duplica nada (a impor
 | Status / saúde | `docker compose ps` |
 | Copiar os backups | `docker compose cp api:/data/backups ./backups` |
 
-O banco gera um backup ao iniciar e depois a cada 24 h em `/data/backups` (dentro do volume), mantendo os 14 mais recentes. Vale copiá-los para fora da VPS de vez em quando.
+A `api` gera um backup ao iniciar e depois a cada 24 h em `/data/backups` (dentro do volume), mantendo os 14 mais recentes. Vale copiá-los para fora da VPS de vez em quando.
 
 Restaurar um backup:
 
@@ -136,12 +127,15 @@ docker compose run --rm --user root -v "$PWD/backups:/b:ro" --entrypoint sh api 
 docker compose start api
 ```
 
-Privacidade: o Caddyfile não grava logs de acesso, e o limite de requisições guarda IPs só em memória.
+Privacidade: o `proxy/Caddyfile` não grava logs de acesso, e o limite de requisições guarda IPs só em memória.
 
 ## Publicar o site (GitHub Pages)
 
-1. Em `js/config.js`, troque `API_URL` pela URL pública da API (ex.: `https://api.exemplo.org`).
-2. Faça o merge na `main`. No repositório: **Settings** > **Pages** > Source: `main` / `/` (root).
+O site é publicado pelo workflow `.github/workflows/pages.yml`, que envia a pasta `web/`. Na primeira vez:
+
+1. Em `web/js/config.js`, troque `API_URL` pela URL pública da API (ex.: `https://api.exemplo.org`).
+2. No repositório: **Settings** > **Pages** > Source: **GitHub Actions**.
+3. Faça o merge na `main` (ou rode o workflow manualmente em **Actions** > **Publicar site** > **Run workflow**).
 
 ## Como funciona o controle de votos
 

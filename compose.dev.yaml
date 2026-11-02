@@ -1,0 +1,42 @@
+# LOCAL: API + site, sem HTTPS e sem arquivo .env.
+#   docker compose -f compose.dev.yaml up --build            -> http://localhost:8080
+#   docker compose -f compose.dev.yaml run --rm api npm test -> testes da API
+#   docker compose -f compose.dev.yaml down -v               -> encerra e apaga os dados de teste
+name: ai-guidelines-dev
+
+services:
+  api:
+    build: ./api
+    environment:
+      ALLOWED_ORIGIN: http://localhost:8080
+    volumes:
+      - api-data:/data
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  web:
+    image: caddy:2
+    volumes:
+      - ./web:/srv:ro   # edite web/ e recarregue a pagina, sem rebuild
+    configs:
+      - source: web-caddyfile
+        target: /etc/caddy/Caddyfile
+    ports:
+      - "127.0.0.1:8080:8080"
+
+configs:
+  web-caddyfile:
+    content: |
+      :8080 {
+      	root * /srv
+      	# Somente no ambiente local: aponta o site para a API local,
+      	# no lugar do web/js/config.js (que guarda a URL de producao).
+      	handle /js/config.js {
+      		header Content-Type "text/javascript; charset=utf-8"
+      		respond "const APP_CONFIG = { API_URL: 'http://localhost:3000' };"
+      	}
+      	file_server
+      }
+
+volumes:
+  api-data:
