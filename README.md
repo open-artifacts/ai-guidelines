@@ -64,6 +64,20 @@ Uma tabela, `votes`, em um único arquivo SQLite:
 
 ## Instalação na VPS
 
+### Primeira vez: dar acesso para o deploy
+
+Quem administra a VPS roda **uma única vez** o `deploy/bootstrap-vps.sh`, como administrador, informando a chave pública SSH de quem fará os deploys:
+
+```bash
+sudo bash deploy/bootstrap-vps.sh 'ssh-ed25519 AAAA... comentario'
+```
+
+O script instala Docker e git se faltarem, cria o usuário `deploy` (sem senha, sem sudo, só no grupo `docker`), autoriza a chave e imprime um resumo (sistema, IP, portas 80/443 em uso). Não altera serviços existentes e pode rodar de novo sem efeitos colaterais. Para desfazer o acesso: `sudo deluser --remove-home deploy`. A partir daí, os deploys são feitos por SSH com `deploy@<ip-da-vps>`, sem envolver quem administra o servidor.
+
+Atenção: no Docker, quem está no grupo `docker` equivale a administrador da máquina. Dê esse acesso só a quem merece essa confiança.
+
+### Deploy
+
 Pré-requisito: Docker com o plugin Compose (`docker compose version`). Se faltar: `curl -fsSL https://get.docker.com | sh`.
 
 ```bash
