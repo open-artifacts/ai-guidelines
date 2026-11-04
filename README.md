@@ -72,7 +72,7 @@ Quem administra a VPS roda **uma única vez** o `deploy/bootstrap-vps.sh`, como 
 sudo bash deploy/bootstrap-vps.sh 'ssh-ed25519 AAAA... comentario'
 ```
 
-O script instala Docker e git se faltarem, cria o usuário `deploy` (sem senha, sem sudo, só no grupo `docker`), autoriza a chave e imprime um resumo (sistema, IP, portas 80/443 em uso). Não altera serviços existentes e pode rodar de novo sem efeitos colaterais. Para desfazer o acesso: `sudo deluser --remove-home deploy`. A partir daí, os deploys são feitos por SSH com `deploy@<ip-da-vps>`, sem envolver quem administra o servidor.
+O script instala Docker (repositório oficial) e git se faltarem, cria o usuário `deploy` (sem senha, sem sudo, só no grupo `docker`), autoriza a chave e imprime um resumo (sistema, IP, porta do SSH, portas 80/443 em uso). Não altera firewall, serviços nem configurações existentes e pode rodar de novo sem efeitos colaterais. Ele se recusa a rodar, sem alterar nada, se o usuário `deploy` já existir com poderes de administrador, ou se o servidor encaminhar pacotes (VPN/NAT) e ainda não tiver Docker, porque o Docker mexe nas regras de rede (para seguir mesmo assim: `ALLOW_FORWARDING=1`). Para desfazer o acesso: `sudo deluser --remove-home deploy`. A partir daí, os deploys são feitos por SSH com `deploy@<ip-da-vps>`, sem envolver quem administra o servidor.
 
 Atenção: no Docker, quem está no grupo `docker` equivale a administrador da máquina. Dê esse acesso só a quem merece essa confiança.
 

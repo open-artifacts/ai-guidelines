@@ -3,56 +3,108 @@
 # Uso, como administrador:   sudo bash bootstrap-vps.sh '<chave publica ssh>'
 #
 # O que faz (e nada alem disso):
-#   1. instala Docker (com Compose) e git, se faltarem;
+#   1. instala Docker (com Compose) e git, se faltarem (repositorio oficial do Docker);
 #   2. cria o usuario "deploy": sem senha e sem sudo, apenas no grupo docker;
 #   3. autoriza a chave publica informada nesse usuario;
-#   4. se o firewall ufw estiver ativo, libera as portas 80 e 443;
-#   5. imprime um resumo para colar de volta.
-# Nao altera servicos, sites nem configuracoes existentes. Pode rodar mais de uma vez.
+#   4. imprime um resumo para colar de volta.
+# Nao altera firewall, servicos, sites nem configuracoes existentes.
+# Pode rodar mais de uma vez.
+#
+# Recusa-se a rodar, sem alterar nada, quando:
+#   - o usuario "deploy" ja existe e tem poderes de administrador;
+#   - o servidor encaminha pacotes (VPN/NAT) e o Docker ainda nao esta instalado,
+#     porque o Docker mexe nas regras de rede. Para seguir mesmo assim:
+#     sudo ALLOW_FORWARDING=1 bash bootstrap-vps.sh '<chave>'
 #
 # Para desfazer o acesso: sudo deluser --remove-home deploy
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
 
 DEPLOY_USER="${DEPLOY_USER:-deploy}"
 PUBKEY="${1:-}"
 
-[ "$(id -u)" -eq 0 ] || { echo "Rode como administrador (sudo)." >&2; exit 1; }
+die() { echo "ERRO: $*" >&2; exit 1; }
+
+# --- Verificacoes (nada e alterado antes de todas passarem) ---------------
+[ "$(id -u)" -eq 0 ] || die "rode como administrador (sudo)."
 
 case "$PUBKEY" in
   ssh-ed25519\ * | ssh-rsa\ * | ecdsa-sha2-*) ;;
-  *) echo "Informe a chave publica SSH como primeiro argumento." >&2; exit 1 ;;
+  *) die "informe a chave publica SSH como primeiro argumento." ;;
 esac
-[[ "$PUBKEY" != *$'\n'* ]] || { echo "A chave publica deve ter uma unica linha." >&2; exit 1; }
+[[ "$PUBKEY" != *$'\n'* ]] || die "a chave publica deve ter uma unica linha."
 
 # shellcheck disable=SC1091
 . /etc/os-release
 case "${ID:-}" in
   ubuntu | debian) ;;
-  *) echo "Sistema nao suportado: ${ID:-desconhecido}. Use Ubuntu ou Debian." >&2; exit 1 ;;
+  *) die "sistema nao suportado (${ID:-desconhecido}). Use Ubuntu ou Debian." ;;
 esac
 
-export DEBIAN_FRONTEND=noninteractive
+if id "$DEPLOY_USER" >/dev/null 2>&1 \
+  && id -nG "$DEPLOY_USER" | tr ' ' '\n' | grep -qxE 'sudo|admin|wheel|root'; then
+  die "o usuario $DEPLOY_USER ja existe e tem poderes de administrador. Nada foi alterado."
+fi
 
-# 1. Docker, Compose e git
+docker_missing=0
+if [ "${SKIP_DOCKER_INSTALL:-0}" != 1 ] && ! command -v docker >/dev/null 2>&1; then
+  docker_missing=1
+fi
+if [ "$docker_missing" = 1 ] && [ "${ALLOW_FORWARDING:-0}" != 1 ] \
+  && [ "$(sysctl -n net.ipv4.ip_forward 2>/dev/null || echo 0)" = 1 ]; then
+  die "este servidor encaminha pacotes (VPN/NAT?) e instalar o Docker pode interferir nisso. Nada foi alterado. Se estiver tudo bem, rode de novo com: sudo ALLOW_FORWARDING=1 bash bootstrap-vps.sh '<chave>'"
+fi
+
+# --- Funcoes --------------------------------------------------------------
+# Servidor recem-criado: o apt costuma estar ocupado com a atualizacao automatica.
+wait_for_apt() {
+  command -v pgrep >/dev/null 2>&1 || return 0
+  local waited=0
+  while pgrep -x apt >/dev/null || pgrep -x apt-get >/dev/null \
+    || pgrep -x dpkg >/dev/null || pgrep -x unattended-upgr >/dev/null; do
+    [ "$waited" -lt 600 ] || die "o apt segue ocupado ha 10 minutos. Tente de novo mais tarde."
+    [ "$waited" -ne 0 ] || echo ">> Aguardando o apt ficar livre (atualizacao automatica em andamento)..."
+    sleep 5
+    waited=$((waited + 5))
+  done
+}
+
+install_docker() {
+  echo ">> Instalando o Docker (repositorio oficial)..."
+  wait_for_apt
+  apt-get update -qq
+  apt-get install -y -qq ca-certificates curl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL "https://download.docker.com/linux/$ID/gpg" -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  local codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+  [ -n "$codename" ] || die "nao consegui identificar a versao do sistema."
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$ID $codename stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
+# --- 1. Docker, Compose e git ---------------------------------------------
 if [ "${SKIP_DOCKER_INSTALL:-0}" != 1 ]; then
-  if ! command -v docker >/dev/null 2>&1; then
-    echo ">> Instalando o Docker..."
-    apt-get update -qq
-    apt-get install -y -qq ca-certificates curl
-    curl -fsSL https://get.docker.com | sh
-  fi
+  [ "$docker_missing" = 0 ] || install_docker
   if ! docker compose version >/dev/null 2>&1; then
     echo ">> Instalando o plugin Compose..."
+    wait_for_apt
     apt-get update -qq
-    apt-get install -y -qq docker-compose-plugin || apt-get install -y -qq docker-compose-v2
+    apt-get install -y -qq docker-compose-v2 || apt-get install -y -qq docker-compose-plugin
   fi
   if command -v systemctl >/dev/null 2>&1; then
     systemctl enable --now docker >/dev/null 2>&1 || true
   fi
 fi
-command -v git >/dev/null 2>&1 || { apt-get update -qq; apt-get install -y -qq git; }
+if ! command -v git >/dev/null 2>&1; then
+  wait_for_apt
+  apt-get update -qq
+  apt-get install -y -qq git
+fi
 
-# 2. Usuario de deploy: sem senha, sem sudo, no grupo docker
+# --- 2. Usuario de deploy: sem senha, sem sudo, no grupo docker ------------
 getent group docker >/dev/null || groupadd docker
 if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
   echo ">> Criando o usuario $DEPLOY_USER..."
@@ -60,33 +112,31 @@ if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
 fi
 usermod -aG docker "$DEPLOY_USER"
 
-# 3. Chave publica autorizada
+# --- 3. Chave publica autorizada -------------------------------------------
 home="$(getent passwd "$DEPLOY_USER" | cut -d: -f6)"
-install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$home/.ssh"
+grp="$(id -gn "$DEPLOY_USER")"
+install -d -m 700 -o "$DEPLOY_USER" -g "$grp" "$home/.ssh"
 touch "$home/.ssh/authorized_keys"
 grep -qxF "$PUBKEY" "$home/.ssh/authorized_keys" || printf '%s\n' "$PUBKEY" >> "$home/.ssh/authorized_keys"
-chown "$DEPLOY_USER:$DEPLOY_USER" "$home/.ssh/authorized_keys"
+chown "$DEPLOY_USER:$grp" "$home/.ssh/authorized_keys"
 chmod 600 "$home/.ssh/authorized_keys"
 
-# 4. Firewall local (ufw), apenas se ja estiver ativo
+# --- 4. Resumo (somente leitura) para colar de volta ------------------------
 ufw_state="ausente"
 if command -v ufw >/dev/null 2>&1; then
-  if ufw status | grep -q "Status: active"; then
-    ufw allow 80/tcp >/dev/null
-    ufw allow 443/tcp >/dev/null
-    ufw_state="ativo (portas 80 e 443 liberadas)"
-  else
-    ufw_state="inativo"
-  fi
+  ufw_state="$(LC_ALL=C ufw status 2>/dev/null | head -1 | sed 's/^Status: //')"
+  ufw_state="${ufw_state:-desconhecido} (nao alterado)"
 fi
-
-# 5. Resumo para colar de volta
+sshd_bin="$(command -v sshd || echo /usr/sbin/sshd)"
+ssh_info="$("$sshd_bin" -T 2>/dev/null | grep -E '^(port|pubkeyauthentication|allowusers|allowgroups) ' | tr '\n' ';' || true)"
 ip="$(curl -fsS -4 -m 5 https://ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
 ports="$(ss -ltnpH 'sport = :80 or sport = :443' 2>/dev/null | awk '{print $4, $6}' || true)"
+
 echo
 echo "=========== COLE ESTE RESUMO DE VOLTA ==========="
 echo "Sistema:           ${PRETTY_NAME:-$ID}"
 echo "IP publico:        $ip"
+echo "SSH:               ${ssh_info:-indisponivel}"
 echo "Docker:            $(docker --version 2>/dev/null || echo ausente)"
 echo "Compose:           $(docker compose version 2>/dev/null || echo ausente)"
 echo "Usuario de deploy: $DEPLOY_USER (grupos: $(id -nG "$DEPLOY_USER"))"
