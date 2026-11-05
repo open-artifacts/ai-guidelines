@@ -5,6 +5,11 @@ updates:
     directory: /api
     schedule:
       interval: monthly
+    ignore:
+      # Versoes pares do Node sao LTS; as impares perdem suporte em poucos meses.
+      # Dentro da 22 o Dependabot segue avisando; trocar de versao maior e manual.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
