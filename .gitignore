@@ -1,6 +1,11 @@
 .env
+.env.*
+!.env.example
 node_modules/
 api/data/
 votes*.json
-deploy/para-o-anderson*.txt
+*.db
+*.db-wal
+*.db-shm
+deploy/*.txt
 backups*/
