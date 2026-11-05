@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:25-slim
 
 WORKDIR /app
 # Sem dependencias npm: so o codigo da API (e seus testes, para `npm test` no container).
