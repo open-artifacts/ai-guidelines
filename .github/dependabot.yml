@@ -1,0 +1,11 @@
+# Avisa (por PR) quando sai versao nova da imagem base da API e das actions.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /api
+    schedule:
+      interval: monthly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

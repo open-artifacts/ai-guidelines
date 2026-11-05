@@ -1,6 +1,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openStore } from './db.js';
@@ -95,6 +96,23 @@ test('rotas e metodos desconhecidos', async () => {
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
 });
 
+test('alvo de requisicao malformado responde 400 e conta no limite', async () => {
+  await stop();
+  await start({ limits: { windowMs: 60_000, reads: 2, writes: 2 } });
+  const raw = (target) =>
+    new Promise((resolve) => {
+      const socket = connect(server.address().port, '127.0.0.1', () =>
+        socket.write(`GET ${target} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n`));
+      let out = '';
+      socket.on('data', (chunk) => { out += chunk; });
+      socket.on('close', () => resolve(out.split('\r\n')[0]));
+    });
+
+  assert.match(await raw('http://[::1'), / 400 /);
+  assert.match(await raw('//'), / 400 /);
+  assert.match(await raw('http://'), / 429 /); // terceiro pedido do mesmo IP: passou de 2 leituras
+});
+
 test('CORS so para a origem permitida', async () => {
   let res = await fetch(`${base}/api/votes/3`, {
     method: 'OPTIONS',
@@ -154,6 +172,17 @@ test('importacao preserva os votos e o backup e uma copia legivel', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('reimportar e idempotente e nao desfaz um voto mais novo', () => {
+  const row = { rating_id: 1, voter_id: A, score: 5, created_at: '2026-03-14T10:00:00.000Z', updated_at: '2026-03-14T10:00:00.000Z' };
+  store.importVotes([row]);
+  store.importVotes([row]);
+  assert.deepEqual(store.ratings(), [{ id: 1, votes: 1, average: 5 }]);
+
+  store.submitVote(1, A, 2); // a pessoa mudou o voto depois da importacao
+  store.importVotes([row]);
+  assert.deepEqual(store.votesOf(A), { 1: 2 });
 });
 
 test('backup mantem so os mais recentes', () => {

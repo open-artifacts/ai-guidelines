@@ -44,7 +44,8 @@ export function openStore(path) {
       ON CONFLICT (rating_id, voter_id)
       DO UPDATE SET score = excluded.score,
                     created_at = excluded.created_at,
-                    updated_at = excluded.updated_at`),
+                    updated_at = excluded.updated_at
+      WHERE excluded.updated_at > votes.updated_at`),   // nunca desfaz um voto mais novo
   };
 
   // Mesmo formato que o front-end ja consumia das RPCs do Supabase.

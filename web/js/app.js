@@ -26,6 +26,7 @@ const STRINGS = {
     loadError: 'Erro ao carregar dados. Tente novamente em instantes.',
     voteRemoved: 'Voto removido',
     voteError: 'Erro ao registrar voto',
+    rateLimited: 'Muitos votos em pouco tempo. Tente novamente em instantes.',
     voteRegistered: (score) => `Voto registrado: ${score}★`,
     voteUpdated: (score) => `Voto atualizado para ${score}★`,
     starLabel: (n) => `Dar nota ${n} de 5`,
@@ -46,6 +47,7 @@ const STRINGS = {
     loadError: 'Error loading data. Please try again shortly.',
     voteRemoved: 'Vote removed',
     voteError: 'Error recording vote',
+    rateLimited: 'Too many votes in a short time. Please try again shortly.',
     voteRegistered: (score) => `Vote recorded: ${score}★`,
     voteUpdated: (score) => `Vote updated to ${score}★`,
     starLabel: (n) => `Give ${n} out of 5`,
@@ -115,24 +117,31 @@ function paintStars(stars, score, className) {
 // ============================================================
 function getVoterId() {
   const key = 'diretrizes_voter_id';
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = generateUUID();
-    localStorage.setItem(key, id);
+  try {
+    let id = localStorage.getItem(key);
+    if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id || '')) {
+      id = generateUUID(); // primeira visita (ou valor corrompido)
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    // Armazenamento bloqueado (modo privado, politica do navegador): o voto vale so nesta aba.
+    return generateUUID();
   }
-  return id;
 }
 
 const VOTER_ID = getVoterId();
 
 // ============================================================
-// Cliente da API de votos (veja server/)
+// Cliente da API de votos (veja api/)
 // ============================================================
 const api = {
   async request(path, options) {
     const res = await fetch(`${API_URL}${path}`, options);
     if (!res.ok) {
-      throw new Error(`${options?.method || 'GET'} ${path} falhou (HTTP ${res.status})`);
+      const error = new Error(`${options?.method || 'GET'} ${path} falhou (HTTP ${res.status})`);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   },
@@ -226,8 +235,9 @@ function renderCards(searchTerm = '') {
 // Monta um card completo (conteudo + widget de avaliacao).
 function buildCard(diretriz, { titulo, principio, aplicacao }) {
   const rating = ratingsData.find((r) => r.id === diretriz.id);
-  const average = rating ? rating.average.toFixed(1) : '0.0';
-  const votes = rating ? rating.votes : 0;
+  // Number(): o valor entra em innerHTML, entao garante que e numerico.
+  const average = rating ? Number(rating.average).toFixed(1) : '0.0';
+  const votes = rating ? Number(rating.votes) : 0;
   const communityScore = rating ? Math.round(rating.average) : 0;
   const userScore = myVotes[diretriz.id] || 0;
   const hasVoted = userScore > 0;
@@ -387,7 +397,7 @@ async function handleVote(diretrizId, score) {
     renderCards(document.getElementById('searchInput').value);
   } catch (error) {
     console.error('Erro ao votar:', error);
-    showToast(t('voteError'));
+    showToast(t(error.status === 429 ? 'rateLimited' : 'voteError'));
   }
 }
 

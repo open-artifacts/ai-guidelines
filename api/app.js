@@ -21,10 +21,11 @@ export function createApp({
   store,
   allowedOrigin = '',
   maxRatingId = 17,
-  limits = { windowMs: 60_000, reads: 120, writes: 30 },
+  limits = { windowMs: 60_000, reads: 300, writes: 120 },
   clientIpHeader = 'x-forwarded-for',
 }) {
   const hits = new Map(); // ip -> { reads, writes, resetAt } (somente em memoria)
+  let lastPrune = 0;
 
   function clientIp(req) {
     // Vale o ultimo valor: e o que o proxy da frente (Apache, nginx, Caddy)
@@ -37,7 +38,10 @@ export function createApp({
   // true quando o IP estourou o limite da janela atual.
   function isLimited(ip, isWrite) {
     const now = Date.now();
-    if (hits.size > 5000) {
+    // Descarta janelas vencidas, no maximo uma vez por janela (varrer a cada requisicao
+    // custaria caro se o mapa crescesse).
+    if (hits.size > 5000 && now - lastPrune >= limits.windowMs) {
+      lastPrune = now;
       for (const [key, entry] of hits) if (entry.resetAt <= now) hits.delete(key);
     }
     let entry = hits.get(ip);
@@ -85,6 +89,15 @@ export function createApp({
       return body;
     } catch {
       throw new HttpError(400, 'invalid_json');
+    }
+  }
+
+  // null quando o alvo da requisicao e malformado (ex.: "http://[::1" ou "//").
+  function parseUrl(target) {
+    try {
+      return new URL(target, 'http://localhost');
+    } catch {
+      return null;
     }
   }
 
@@ -150,10 +163,12 @@ export function createApp({
         return res.end();
       }
 
-      const url = new URL(req.url, 'http://localhost');
-      if (url.pathname !== '/api/health' && isLimited(clientIp(req), req.method !== 'GET')) {
+      const url = parseUrl(req.url);
+      // O health nao conta no limite; alvos malformados contam (e viram 400).
+      if (url?.pathname !== '/api/health' && isLimited(clientIp(req), req.method !== 'GET')) {
         throw new HttpError(429, 'rate_limited');
       }
+      if (!url) throw new HttpError(400, 'bad_request');
       await route(req, res, url);
     } catch (error) {
       if (error instanceof HttpError) {

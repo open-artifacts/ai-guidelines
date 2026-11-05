@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Publica a API deste projeto (que ouve so em 127.0.0.1:3000) por HTTPS no Apache
 # que ja atende o servidor, com um nome proprio e certificado do certbot.
-# Uso, como administrador:   sudo bash apache-proxy.sh <dominio>
+# Uso, como administrador:   sudo bash apache-proxy.sh <dominio> [email]
+#   [email] so e preciso se o certbot ainda nao tem conta neste servidor.
 #
 # O que faz (e nada alem disso):
 #   1. habilita os modulos proxy e proxy_http do Apache (nao ligam nenhum proxy aberto);
@@ -22,12 +23,15 @@
 #   sudo rm /etc/apache2/sites-available/zz-ai-guidelines-api*.conf
 #   sudo certbot delete --cert-name <dominio>
 #   sudo systemctl reload apache2
+# Os modulos proxy e proxy_http continuam habilitados (nao abrem proxy aberto). So se
+# mais nada neste servidor os usa: sudo a2dismod proxy_http proxy && sudo systemctl restart apache2
 set -euo pipefail
 
 SITE="zz-ai-guidelines-api"
 CONF="/etc/apache2/sites-available/$SITE.conf"
-API="http://127.0.0.1:${API_PORT:-3000}"
+API_PORT="${API_PORT:-3000}"
 DOMAIN="${1:-}"
+EMAIL="${2:-}"
 
 die() { echo "ERRO: $*" >&2; exit 1; }
 
@@ -35,9 +39,15 @@ die() { echo "ERRO: $*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ] || die "rode como administrador (sudo)."
 [[ "$DOMAIN" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] \
   || die "informe o dominio como primeiro argumento (ex.: api.exemplo.org, em minusculas)."
+[[ "$API_PORT" =~ ^[0-9]{2,5}$ ]] || die "API_PORT invalida: $API_PORT"
+API="http://127.0.0.1:$API_PORT"
 command -v apache2ctl >/dev/null 2>&1 || die "Apache nao encontrado."
 if [ "${SKIP_CERTBOT:-0}" != 1 ]; then
   command -v certbot >/dev/null 2>&1 || die "certbot nao encontrado."
+  [ -z "$EMAIL" ] || [[ "$EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]] || die "e-mail invalido: $EMAIL"
+  if [ -z "$EMAIL" ] && [ -z "$(ls -A /etc/letsencrypt/accounts 2>/dev/null)" ]; then
+    die "o certbot ainda nao tem conta neste servidor. Rode de novo informando um e-mail: sudo bash apache-proxy.sh $DOMAIN voce@exemplo.org"
+  fi
 fi
 if [ -e "$CONF" ] && ! grep -qxF "    ServerName $DOMAIN" "$CONF"; then
   die "$CONF ja existe para outro nome. Nada foi alterado."
@@ -76,8 +86,9 @@ if [ ! -e "$CONF" ]; then
     ServerName $DOMAIN
     ProxyPass / $API/
     ProxyPassReverse / $API/
-    # Sem log de acesso: a API nao guarda os IPs de quem vota.
+    # Sem log de acesso e sem IP no log de erros: a API nao guarda quem vota.
     CustomLog /dev/null common
+    ErrorLogFormat "[%{u}t] [%-m:%l] %M"
     ErrorLog \${APACHE_LOG_DIR}/$SITE-error.log
 </VirtualHost>
 EOF
@@ -104,8 +115,13 @@ fi
 # --- 2. Certificado e HTTPS so para este nome -------------------------------
 if [ "${SKIP_CERTBOT:-0}" != 1 ]; then
   echo ">> Pedindo o certificado (certbot)..."
-  certbot --apache -d "$DOMAIN" --non-interactive --agree-tos --redirect \
+  certbot_args=(--apache -d "$DOMAIN" --non-interactive --agree-tos --redirect)
+  [ -z "$EMAIL" ] || certbot_args+=(-m "$EMAIL")
+  certbot "${certbot_args[@]}" \
     || die "o certbot falhou (veja a mensagem acima). O virtual host HTTP de $DOMAIN ficou criado; os outros sites nao foram afetados."
+  if ! grep -q ':443 ' <<<"$default_before" && default_vhosts | grep -q ':443 '; then
+    echo "AVISO: este servidor nao tinha nenhum site HTTPS; $DOMAIN passou a ser o padrao da porta 443."
+  fi
 fi
 
 # --- 3. Teste e resumo (para colar de volta) --------------------------------

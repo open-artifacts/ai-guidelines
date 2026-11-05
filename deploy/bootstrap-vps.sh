@@ -4,14 +4,18 @@
 #
 # O que faz (e nada alem disso):
 #   1. instala Docker (com Compose) e git, se faltarem (repositorio oficial do Docker);
-#   2. cria o usuario "deploy": sem senha e sem sudo, apenas no grupo docker;
-#   3. autoriza a chave publica informada nesse usuario;
+#   2. cria o usuario "deploy": sem senha e sem sudo, no grupo docker.
+#      ATENCAO: quem esta no grupo docker tem, na pratica, acesso de administrador
+#      a maquina. Autorize so quem merece essa confianca;
+#   3. autoriza a chave publica informada nesse usuario, com "restrict" (sem
+#      encaminhamento de portas, de agente nem de X11);
 #   4. imprime um resumo para colar de volta.
-# Nao altera firewall, servicos, sites nem configuracoes existentes.
+# Nao altera o firewall do sistema (ufw), servicos, sites nem configuracoes
+# existentes. (Ao ser instalado, o Docker cria as proprias regras de rede.)
 # Pode rodar mais de uma vez.
 #
 # Recusa-se a rodar, sem alterar nada, quando:
-#   - o usuario "deploy" ja existe e tem poderes de administrador;
+#   - o usuario "deploy" ja existe e tem poderes de administrador (grupo ou sudoers);
 #   - o servidor encaminha pacotes (VPN/NAT) e o Docker ainda nao esta instalado,
 #     porque o Docker mexe nas regras de rede. Para seguir mesmo assim:
 #     sudo ALLOW_FORWARDING=1 bash bootstrap-vps.sh '<chave>'
@@ -41,9 +45,15 @@ case "${ID:-}" in
   *) die "sistema nao suportado (${ID:-desconhecido}). Use Ubuntu ou Debian." ;;
 esac
 
-if id "$DEPLOY_USER" >/dev/null 2>&1 \
-  && id -nG "$DEPLOY_USER" | tr ' ' '\n' | grep -qxE 'sudo|admin|wheel|root'; then
-  die "o usuario $DEPLOY_USER ja existe e tem poderes de administrador. Nada foi alterado."
+if id "$DEPLOY_USER" >/dev/null 2>&1; then
+  if id -nG "$DEPLOY_USER" | tr ' ' '\n' | grep -qxE 'sudo|admin|wheel|root'; then
+    die "o usuario $DEPLOY_USER ja existe e tem poderes de administrador. Nada foi alterado."
+  fi
+  # Tambem recusa quem recebeu sudo por arquivo em /etc/sudoers.d (ex.: NOPASSWD).
+  if command -v sudo >/dev/null 2>&1 \
+    && sudo -n -l -U "$DEPLOY_USER" 2>/dev/null | grep -q 'may run the following commands'; then
+    die "o usuario $DEPLOY_USER ja existe e tem permissoes de sudo. Nada foi alterado."
+  fi
 fi
 
 docker_missing=0
@@ -126,10 +136,15 @@ usermod -aG docker "$DEPLOY_USER"
 home="$(getent passwd "$DEPLOY_USER" | cut -d: -f6)"
 grp="$(id -gn "$DEPLOY_USER")"
 install -d -m 700 -o "$DEPLOY_USER" -g "$grp" "$home/.ssh"
-touch "$home/.ssh/authorized_keys"
-grep -qxF "$PUBKEY" "$home/.ssh/authorized_keys" || printf '%s\n' "$PUBKEY" >> "$home/.ssh/authorized_keys"
-chown "$DEPLOY_USER:$grp" "$home/.ssh/authorized_keys"
-chmod 600 "$home/.ssh/authorized_keys"
+auth="$home/.ssh/authorized_keys"
+touch "$auth"
+# A chave entra com "restrict" (sem port-forwarding, agente nem X11; "pty" mantem o
+# terminal). Se a mesma chave ja estava sem restricoes, e trocada, nunca duplicada.
+entry="restrict,pty $PUBKEY"
+{ grep -vxF -e "$PUBKEY" -e "$entry" "$auth" || true; printf '%s\n' "$entry"; } > "$auth.new"
+mv "$auth.new" "$auth"
+chown "$DEPLOY_USER:$grp" "$auth"
+chmod 600 "$auth"
 
 # --- 4. Resumo (somente leitura) para colar de volta ------------------------
 ufw_state="ausente"
@@ -149,7 +164,7 @@ echo "IP publico:        $ip"
 echo "SSH:               ${ssh_info:-indisponivel}"
 echo "Docker:            $(docker --version 2>/dev/null || echo ausente)"
 echo "Compose:           $(docker compose version 2>/dev/null || echo ausente)"
-echo "Usuario de deploy: $DEPLOY_USER (grupos: $(id -nG "$DEPLOY_USER"))"
+echo "Usuario de deploy: $DEPLOY_USER (grupos: $(id -nG "$DEPLOY_USER")) - sem sudo, mas no grupo docker = acesso equivalente a administrador"
 echo "Firewall ufw:      $ufw_state"
 echo "Containers ativos: $(docker ps -q 2>/dev/null | wc -l)"
 echo "Portas 80/443:     ${ports:-livres}"

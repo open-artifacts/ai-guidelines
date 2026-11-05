@@ -10,11 +10,29 @@ services:
     restart: unless-stopped
     environment:
       ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:?defina ALLOWED_ORIGIN no arquivo .env}
-      MAX_RATING_ID: ${MAX_RATING_ID:-17}
+      # Vazio = usa o padrao da API (veja api/README.md).
+      MAX_RATING_ID: ${MAX_RATING_ID:-}
+      RATE_LIMIT_READS: ${RATE_LIMIT_READS:-}
+      RATE_LIMIT_WRITES: ${RATE_LIMIT_WRITES:-}
     volumes:
       - api-data:/data
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
+    # Isolamento: so o volume /data e gravavel; sem privilegios; recursos limitados
+    # (a VPS pode ser compartilhada com outros sites) e logs com tamanho maximo.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   proxy:
     profiles: ["https"]

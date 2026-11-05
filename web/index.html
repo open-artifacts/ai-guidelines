@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Defesa em profundidade: so scripts e estilos do proprio site. connect-src aceita
+         qualquer API em https (a URL fica em js/config.js) e a API local de desenvolvimento. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src 'self' https: http://localhost:3000; base-uri 'none'; form-action 'none'">
     <meta name="description" content="Catálogo interativo de diretrizes para o uso de IA Generativa no ensino de programação.">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23667eea'>🧠</text></svg>">
     <link rel="stylesheet" href="css/styles.css">
