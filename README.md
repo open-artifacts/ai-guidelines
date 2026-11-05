@@ -136,9 +136,9 @@ O comando mostra o resumo por diretriz. Rodar de novo não duplica nada (a impor
 | Atualizar a API | `git pull && docker compose up -d --build` |
 | Ver logs | `docker compose logs -f api` |
 | Status / saúde | `docker compose ps` |
-| Copiar os backups | `docker compose cp api:/data/backups ./backups` |
+| Copiar os backups para o seu computador | `bash deploy/baixar-backup.sh deploy@<ip-da-vps> ./backups` (rode **na sua máquina**, não na VPS) |
 
-A `api` gera um backup ao iniciar e depois a cada 24 h em `/data/backups` (dentro do volume), mantendo os 14 mais recentes. Vale copiá-los para fora da VPS de vez em quando.
+A `api` gera um backup ao iniciar e depois a cada 24 h em `/data/backups` (dentro do volume), mantendo os 14 mais recentes. Como ficam no mesmo volume dos votos, **não protegem contra perder o servidor**: copie-os para fora da VPS de vez em quando com o `deploy/baixar-backup.sh` (ele confere o cabeçalho de cada arquivo e não altera nada na VPS). Se o `ssh` do seu terminal não ler o `~/.ssh/config`, aponte o do sistema: `SSH=/c/Windows/System32/OpenSSH/ssh.exe bash deploy/baixar-backup.sh ...`.
 
 Restaurar um backup:
 
