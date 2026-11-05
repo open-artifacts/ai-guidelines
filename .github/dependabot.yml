@@ -14,3 +14,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # Em 2026-11 as versoes 5 destas duas acoes foram revertidas: o deploy do Pages
+      # nao terminava. Reavalie com um run manual (workflow_dispatch) antes de aceitar.
+      - dependency-name: actions/upload-pages-artifact
+        update-types: ["version-update:semver-major"]
+      - dependency-name: actions/deploy-pages
+        update-types: ["version-update:semver-major"]
