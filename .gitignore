@@ -3,3 +3,4 @@ node_modules/
 api/data/
 votes*.json
 deploy/para-o-anderson*.txt
+backups*/
