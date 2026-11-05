@@ -27,8 +27,10 @@ export function createApp({
   const hits = new Map(); // ip -> { reads, writes, resetAt } (somente em memoria)
 
   function clientIp(req) {
+    // Vale o ultimo valor: e o que o proxy da frente (Apache, nginx, Caddy)
+    // acrescentou. Os anteriores vieram do cliente e podem ser forjados.
     const forwarded = req.headers[clientIpHeader];
-    if (forwarded) return String(forwarded).split(',')[0].trim();
+    if (forwarded) return String(forwarded).split(',').pop().trim();
     return req.socket.remoteAddress ?? 'unknown';
   }
 

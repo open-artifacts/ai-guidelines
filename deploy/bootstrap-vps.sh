@@ -57,23 +57,35 @@ fi
 
 # --- Funcoes --------------------------------------------------------------
 # Servidor recem-criado: o apt costuma estar ocupado com a atualizacao automatica.
-wait_for_apt() {
-  command -v pgrep >/dev/null 2>&1 || return 0
-  local waited=0
-  while pgrep -x apt >/dev/null || pgrep -x apt-get >/dev/null \
-    || pgrep -x dpkg >/dev/null || pgrep -x unattended-upgr >/dev/null; do
-    [ "$waited" -lt 600 ] || die "o apt segue ocupado ha 10 minutos. Tente de novo mais tarde."
-    [ "$waited" -ne 0 ] || echo ">> Aguardando o apt ficar livre (atualizacao automatica em andamento)..."
+# Em vez de adivinhar pelo nome dos processos (o servico "unattended-upgrades"
+# fica sempre ativo e enganaria a checagem), tenta e repete enquanto o proprio
+# apt reclamar do bloqueio, por ate 10 minutos. Qualquer outro erro para na hora.
+apt_get() {
+  local log start=$SECONDS announced=0
+  log="$(mktemp)"
+  until apt-get -o DPkg::Lock::Timeout=60 "$@" 2>&1 | tee "$log"; do
+    if ! grep -qE '^E: (Could not get lock|Unable to acquire)' "$log"; then
+      rm -f "$log"
+      echo "ERRO: o apt falhou (veja a mensagem acima)." >&2
+      return 1
+    fi
+    if [ $((SECONDS - start)) -ge 600 ]; then
+      rm -f "$log"
+      die "o apt segue ocupado ha 10 minutos. Tente de novo mais tarde."
+    fi
+    if [ "$announced" = 0 ]; then
+      echo ">> Aguardando o apt ficar livre (atualizacao automatica em andamento)..."
+      announced=1
+    fi
     sleep 5
-    waited=$((waited + 5))
   done
+  rm -f "$log"
 }
 
 install_docker() {
   echo ">> Instalando o Docker (repositorio oficial)..."
-  wait_for_apt
-  apt-get update -qq
-  apt-get install -y -qq ca-certificates curl
+  apt_get update -q
+  apt_get install -y -q ca-certificates curl
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL "https://download.docker.com/linux/$ID/gpg" -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
@@ -81,8 +93,8 @@ install_docker() {
   [ -n "$codename" ] || die "nao consegui identificar a versao do sistema."
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$ID $codename stable" \
     > /etc/apt/sources.list.d/docker.list
-  apt-get update -qq
-  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  apt_get update -q
+  apt_get install -y -q docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 }
 
 # --- 1. Docker, Compose e git ---------------------------------------------
@@ -90,18 +102,16 @@ if [ "${SKIP_DOCKER_INSTALL:-0}" != 1 ]; then
   [ "$docker_missing" = 0 ] || install_docker
   if ! docker compose version >/dev/null 2>&1; then
     echo ">> Instalando o plugin Compose..."
-    wait_for_apt
-    apt-get update -qq
-    apt-get install -y -qq docker-compose-v2 || apt-get install -y -qq docker-compose-plugin
+    apt_get update -q
+    apt_get install -y -q docker-compose-v2 || apt_get install -y -q docker-compose-plugin
   fi
   if command -v systemctl >/dev/null 2>&1; then
     systemctl enable --now docker >/dev/null 2>&1 || true
   fi
 fi
 if ! command -v git >/dev/null 2>&1; then
-  wait_for_apt
-  apt-get update -qq
-  apt-get install -y -qq git
+  apt_get update -q
+  apt_get install -y -q git
 fi
 
 # --- 2. Usuario de deploy: sem senha, sem sudo, no grupo docker ------------

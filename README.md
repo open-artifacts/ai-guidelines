@@ -30,7 +30,7 @@ Requer só o Docker.
 
 ```bash
 docker compose -f compose.dev.yaml up --build           # abra http://localhost:8080
-docker compose -f compose.dev.yaml run --rm api npm test  # 9 testes da API
+docker compose -f compose.dev.yaml run --rm api npm test  # 10 testes da API
 docker compose -f compose.dev.yaml down -v                # encerra e apaga os dados de teste
 ```
 
@@ -47,7 +47,7 @@ docker compose -f compose.dev.yaml down -v                # encerra e apaga os d
 | DELETE | `/api/votes/:id?voter=<uuid>` | Remove o voto |
 | GET | `/api/health` | `{ "ok": true }` (para monitoramento) |
 
-PUT e DELETE respondem `{ ratingId, votes, average }`. Validações: diretriz entre 1 e 17, nota inteira de 1 a 5, `voter` em formato UUID, corpo de até 1 KB. Limite por IP: 120 leituras e 30 escritas por minuto (HTTP 429). CORS liberado só para a origem definida em `ALLOWED_ORIGIN`.
+PUT e DELETE respondem `{ ratingId, votes, average }`. Validações: diretriz entre 1 e 17, nota inteira de 1 a 5, `voter` em formato UUID, corpo de até 1 KB. Limite por IP: 120 leituras e 30 escritas por minuto (HTTP 429), usando o último valor de `X-Forwarded-For` (o que o proxy da frente acrescenta). CORS liberado só para a origem definida em `ALLOWED_ORIGIN`.
 
 ### Modelo de dados
 
@@ -107,6 +107,14 @@ server {
     }
 }
 ```
+
+**Se o proxy existente for o Apache**, o `deploy/apache-proxy.sh` faz isso (como administrador, com o nome já apontado para a VPS e a API no ar):
+
+```bash
+sudo bash deploy/apache-proxy.sh api.exemplo.org
+```
+
+Ele cria um virtual host só para esse nome (`zz-ai-guidelines-api`, depois dos demais para não virar o site padrão), sem log de acesso, pede o certificado ao `certbot` e testa a API. Não altera os outros sites e se desfaz sozinho se o Apache recusar a configuração. As instruções para desfazer estão no cabeçalho do script.
 
 Conferir: `curl https://api.exemplo.org/api/health` deve responder `{"ok":true}`.
 

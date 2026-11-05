@@ -126,6 +126,18 @@ test('limite de requisicoes por IP (o health nao conta)', async () => {
   assert.equal(other.status, 200);
 });
 
+test('limite por IP vale o ultimo X-Forwarded-For (o primeiro pode ser forjado)', async () => {
+  await stop();
+  await start({ limits: { windowMs: 60_000, reads: 2, writes: 2 } });
+  const get = (forwarded) =>
+    fetch(`${base}/api/state?voter=${A}`, { headers: { 'X-Forwarded-For': forwarded } }).then((r) => r.status);
+
+  assert.deepEqual(
+    [await get('1.1.1.1, 203.0.113.9'), await get('2.2.2.2, 203.0.113.9'), await get('3.3.3.3, 203.0.113.9')],
+    [200, 200, 429],
+  );
+});
+
 test('importacao preserva os votos e o backup e uma copia legivel', () => {
   store.importVotes([
     { rating_id: 1, voter_id: A, score: 5, created_at: '2026-03-14T10:00:00.000Z', updated_at: '2026-06-20T10:00:00.000Z' },
