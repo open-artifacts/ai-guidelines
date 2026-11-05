@@ -1,0 +1,5 @@
+# Sem a diretiva `log`, nenhum log de acesso e gravado (privacidade dos votantes).
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:3000
+}

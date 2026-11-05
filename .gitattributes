@@ -1,0 +1,3 @@
+# Arquivos de texto sempre com LF (scripts e Dockerfiles rodam em Linux, mesmo
+# quando o repositorio e clonado no Windows).
+* text=auto eol=lf

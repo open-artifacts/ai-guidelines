@@ -1,0 +1,13 @@
+{
+  "name": "ai-guidelines-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API de votos das diretrizes (Node + SQLite, sem dependencias)",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "import": "node --disable-warning=ExperimentalWarning import-votes.js"
+  }
+}

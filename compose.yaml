@@ -1,0 +1,37 @@
+# PRODUCAO (VPS): a API e, opcionalmente, o proxy HTTPS. O site fica no GitHub Pages.
+#   docker compose up -d --build                    -> so a API, em 127.0.0.1:3000
+#   docker compose --profile https up -d --build    -> API + HTTPS automatico (portas 80/443)
+# Para rodar tudo localmente, use compose.dev.yaml.
+name: ai-guidelines
+
+services:
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:?defina ALLOWED_ORIGIN no arquivo .env}
+      MAX_RATING_ID: ${MAX_RATING_ID:-17}
+    volumes:
+      - api-data:/data
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+
+  proxy:
+    profiles: ["https"]
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-}   # obrigatorio so com --profile https
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - proxy-data:/data
+      - proxy-config:/config
+
+volumes:
+  api-data:
+  proxy-data:
+  proxy-config:
